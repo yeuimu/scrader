@@ -9,6 +9,7 @@
     "mcp-server/bridge.js",
     "mcp-server/providers.example.json",
     "README.md",
+    "README.zh-CN.md",
     "LICENSE"
   ],
   "engines": { "node": ">=18" },
