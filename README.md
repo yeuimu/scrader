@@ -73,7 +73,7 @@ harvest({
 
 ## Desktop apps (optional)
 
-`desktop` proxies the local [cua](https://github.com/trycua/cua) CLI (`cua do …`) for native desktop automation. Install cua separately and run `cua do switch` once — the tool lights up; without it, everything else keeps working. Browser pages stay on scrader's own DOM-level tools.
+`desktop` proxies the local [cua-driver](https://github.com/trycua/cua) daemon (`cua-driver call <method> <json>`) for native desktop automation — UIA element clicks that work in the background without stealing focus. Install: `irm https://cua.ai/driver/install.ps1 | iex; cua-driver autostart kick` (PowerShell), then the tool lights up; without it, everything else keeps working. Browser pages stay on scrader's own DOM-level tools.
 
 ## Security
 

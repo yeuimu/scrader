@@ -73,7 +73,7 @@ harvest({
 
 ## 桌面应用（可选）
 
-`desktop` 代理本机 [cua](https://github.com/trycua/cua) CLI（`cua do …`），补上原生桌面应用自动化。另行安装 cua 并执行一次 `cua do switch` 即点亮；不装则优雅报错，不影响其他工具。浏览器页面操作仍走 scrader 本体的 DOM 级工具。
+`desktop` 代理本机 [cua-driver](https://github.com/trycua/cua) 守护进程（`cua-driver call <method> <json>`），补上原生桌面应用自动化——UIA 元素级点击，后台执行不抢焦点。安装（PowerShell）：`irm https://cua.ai/driver/install.ps1 | iex; cua-driver autostart kick`，装好即点亮；不装则优雅报错，不影响其他工具。浏览器页面操作仍走 scrader 本体的 DOM 级工具。
 
 ## 安全
 

@@ -22,7 +22,7 @@ const readline = require('readline');
 const { spawn, execFile, spawnSync } = require('child_process');
 
 const PORT = parseInt(process.env.SCRADER_PORT || '7827', 10);
-const VERSION = '0.5.0';
+const VERSION = '0.5.1';
 
 // ───────────────────── 用户级配置目录（平台自适应） ─────────────────────
 // SCRADER_CONFIG_DIR 环境变量 → Windows: %APPDATA%\scrader_mcp → 其余: ${XDG_CONFIG_HOME:-~/.config}/scrader_mcp
@@ -171,9 +171,10 @@ async function ensureBridge() {
   return false;
 }
 
-// ───────────────────── 可选桌面子系统：cua CLI 门面 ─────────────────────
-// 需本机另装 cua CLI（https://cua.ai/docs/tutorials/drive-your-first-app）并 `cua do switch` 选定本机。
-// 未安装时给出指引；不影响 scrader 其余工具。浏览器操作仍走扩展本体，这里只补桌面原生应用。
+// ───────────────────── 可选桌面子系统：cua-driver 门面 ─────────────────────
+// 需本机另装 cua-driver（Windows PowerShell：irm https://cua.ai/driver/install.ps1 | iex，
+// 再 cua-driver autostart kick）。未安装时给出指引；不影响 scrader 其余工具。
+// 浏览器操作仍走扩展本体，这里只补桌面原生应用。
 
 function execFileP(cmd, list, opts) {
   return new Promise((resolve, reject) => {
@@ -181,29 +182,26 @@ function execFileP(cmd, list, opts) {
   });
 }
 
-async function runCuaDo(list) {
-  const quote = (a) => (/[\s"]/.test(a) ? '"' + a.replace(/"/g, '""') + '"' : a);
-  // 先解析真实可执行路径：Windows 上 .cmd 不存在时 cmd.exe 返回本地化错误文本而非 ENOENT，
-  // 不能靠捕获 ENOENT 判断未安装
-  const probe = process.platform === 'win32'
-    ? spawnSync('where', ['cua'], { encoding: 'utf8', windowsHide: true })
-    : spawnSync('which', ['cua'], { encoding: 'utf8' });
-  let cu = null;
-  if (probe.status === 0) {
-    if (process.platform === 'win32') {
+function resolveCuaDriver() {
+  if (process.platform === 'win32') {
+    const probe = spawnSync('where', ['cua-driver'], { encoding: 'utf8', windowsHide: true });
+    if (probe.status === 0) {
       const first = (probe.stdout || '').split('\n').map((s) => s.trim()).filter(Boolean)[0];
-      if (first) cu = { cmd: first, shell: /\.cmd$/i.test(first) };
-    } else cu = { cmd: 'cua', shell: false };
+      if (first && !/\.cmd$/i.test(first)) return { cmd: first, shell: false };
+    }
+    const fb = process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, 'Programs', 'Cua', 'cua-driver', 'bin', 'cua-driver.exe');
+    if (fb && fs.existsSync(fb)) return { cmd: fb, shell: false };
+    return null;
   }
-  if (!cu) throw new Error('cua CLI 未安装或不在 PATH —— 桌面子系统未启用。安装见 https://cua.ai/docs/tutorials/drive-your-first-app（Windows 用 PowerShell 一行安装），装完先执行 `cua do switch` 选定本机目标');
-  try {
-    const argv = cu.shell ? ['do', ...list.map(quote)] : ['do', ...list];
-    const { stdout, stderr } = await execFileP(cu.cmd, argv, { timeout: 90000, windowsHide: true, shell: cu.shell });
-    return ((stdout || '') + (stdout ? '' : (stderr || ''))).trim();
-  } catch (e) {
-    const t = ((e.stderr || e.stdout || e.message || '') + '').trim();
-    throw new Error(t || `cua do ${list.join(' ')} 失败`);
-  }
+  const probe = spawnSync('which', ['cua-driver'], { encoding: 'utf8' });
+  return probe.status === 0 ? { cmd: 'cua-driver', shell: false } : null;
+}
+
+async function runCuaCall(method, argsObj) {
+  const cu = resolveCuaDriver();
+  if (!cu) throw new Error('cua-driver 未安装 —— 桌面子系统未启用。安装（Windows PowerShell）：irm https://cua.ai/driver/install.ps1 | iex，然后 cua-driver autostart kick；详见 https://cua.ai/docs/tutorials/drive-your-first-app');
+  const { stdout, stderr } = await execFileP(cu.cmd, ['call', method, JSON.stringify(argsObj || {})], { timeout: 120000, windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
+  return ((stdout || '') + (stdout ? '' : (stderr || ''))).trim();
 }
 
 // ───────────────────── 工具定义（MCP tools/list） ─────────────────────
@@ -271,11 +269,14 @@ const TOOLS_DEF = [
   },
   {
     name: 'desktop',
-    description: '桌面原生应用自动化（可选子系统，需本机已装 cua CLI 并 `cua do switch` 选定本机）：原样代理 `cua do <args>`。常用：["status"] / ["screenshot","--save","<路径>"] / ["click","<x>","<y>"] / ["dclick","<x>","<y>"] / ["type","<文本>"] / ["key","Enter"] / ["hotkey","ctrl+s"] / ["scroll","down","3"] / ["window","ls"] / ["open","<路径或URL>"]。坐标以截图图像空间为准。浏览器页面操作请仍用 scrader 本体工具（click/fill/scroll 等，走 DOM 精确定位）',
+    description: '桌面原生应用自动化（可选子系统，需本机 cua-driver 守护进程）：代理 `cua-driver call <method> <json>`。方法全集用 desktop({method:"list_tools"}) 查；常用：list_apps / list_windows / get_window_state(pid[,window_id]) 返回 UIA 元素树（click 优先用其 element_index，后台 UIA Invoke，不抢焦点不动光标，最小化窗口也可点）/ click / type_text / press_key / hotkey / scroll / set_value(UIA ValuePattern) / invoke_menu / launch_app(SW_SHOWNOACTIVATE 不抢焦点) / kill_app / get_desktop_state(截图) / clipboard_read / verify_state。浏览器页面操作仍用 scrader 本体工具（DOM 精确定位）',
     inputSchema: {
       type: 'object',
-      properties: { args: { type: 'array', items: { type: 'string' }, description: 'cua do 的位置参数数组' } },
-      required: ['args'],
+      properties: {
+        method: { type: 'string', description: 'cua-driver 方法名（list_tools 可查全集）' },
+        args: { type: 'object', description: '该方法的参数对象（schema 见 describe 或方法文档）' },
+      },
+      required: ['method'],
     },
   },
 ];
@@ -393,15 +394,16 @@ async function handleCall(params) {
     return { content: [{ type: 'text', text: JSON.stringify(j.data, null, 2) }] };
   }
 
-  // desktop（可选）：代理本机 cua CLI，桌面原生应用自动化；未安装时返回安装指引
+  // desktop（可选）：代理本机 cua-driver（cua-driver call <method> <json>），桌面原生应用自动化
   if (name === 'desktop') {
-    const list = (Array.isArray(args.args) ? args.args : []).map((s) => String(s));
-    if (!list.length) return { content: [{ type: 'text', text: '缺少 args（cua do 的位置参数，如 ["click","100","200"]）' }], isError: true };
+    const method = String(args.method || '');
+    if (!/^[a-z_][a-z0-9_]*$/i.test(method)) return { content: [{ type: 'text', text: 'method 需为合法方法名（如 list_apps / get_window_state / click）' }], isError: true };
     try {
-      const out = await runCuaDo(list);
-      return { content: [{ type: 'text', text: out || '(cua do 无输出)' }] };
+      const out = await runCuaCall(method, args.args && typeof args.args === 'object' ? args.args : {});
+      return { content: [{ type: 'text', text: out || '(无输出)' }] };
     } catch (e) {
-      return { content: [{ type: 'text', text: 'desktop 失败: ' + ((e && e.message) || e) }], isError: true };
+      const t = ((e && (e.stderr || e.stdout || e.message)) || String(e) || '').trim();
+      return { content: [{ type: 'text', text: 'desktop 失败: ' + (t || '未知错误') }], isError: true };
     }
   }
 

@@ -15,12 +15,11 @@ p.stdout.on('data', (d) => {
     if (j.id === 1) {
       const names = j.result.tools.map((t) => t.name);
       console.log('tools:', names.length, names.includes('desktop') ? '含desktop ✓' : '缺desktop ✗');
-      send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'desktop', arguments: { args: ['status'] } } });
+      send({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name: 'desktop', arguments: { method: 'get_screen_size' } } });
     } else if (j.id === 2) {
       const text = j.result.content[0].text;
-      console.log('desktop(status):', text.slice(0, 100));
-      const ok = /未安装|PATH|cua/.test(text);
-      console.log(/未安装或不在 PATH/.test(text) ? '优雅报错 ✓（未装 cua 时返回安装指引）' : 'cua 已安装，返回: ' + (ok ? '正常输出' : text.slice(0, 60)));
+      console.log('desktop(get_screen_size):', text.slice(0, 100));
+      console.log(/width/.test(text) ? '真机调用 ✓（cua-driver 已装并返回真实数据）' : (/未安装/.test(text) ? '优雅报错 ✓（未装 cua-driver 时返回安装指引）' : '异常输出'));
       p.kill();
       process.exit(0);
     }
