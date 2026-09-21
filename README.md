@@ -30,20 +30,20 @@
 
 ## 快速开始（Getting Started）
 
-1. **扩展**：`chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」→ 选 `extension/`（开发者模式保持开启）
-2. **决策 Key（可选，仅 decide 需要）**：把 `server/providers.example.json` 复制到用户配置目录并填 Key：
+1. **扩展**：`chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」→ 选 `chrome-extension/`（开发者模式保持开启）
+2. **决策 Key（可选，仅 decide 需要）**：把 `mcp-server/providers.example.json` 复制到用户配置目录并填 Key：
    - Windows：`%APPDATA%\scrader_mcp\config.json`（即 `C:\Users\<你>\AppData\Roaming\scrader_mcp\config.json`）
    - macOS / Linux：`~/.config/scrader_mcp/config.json`
    - 或用环境变量 `SCRADER_TYPESAFE_API_KEY` 等（见下）；`SCRADER_CONFIG_DIR` 可自定义目录
 3. **Agent 侧**：MCP 配置加一条（路径按机器改）：
    ```json
    { "mcp": { "servers": {
-     "scrader": { "command": "node", "args": ["<项目路径>/server/scrader-mcp.js"] }
+     "scrader": { "command": "node", "args": ["<项目路径>/mcp-server/scrader-mcp.js"] }
    } } } }
    ```
 4. 重启 Agent 会话，工具以 `mcp__scrader__*` 出现；点扩展图标确认"已连接桥接"
 
-验证：`node server/test-decide.js`（测 Key）；`node server/scrader-mcp.js --check`（测桥接）。
+验证：`node mcp-server/test-decide.js`（测 Key）；`node mcp-server/scrader-mcp.js --check`（测桥接）。
 
 ## 用户配置目录
 
@@ -82,7 +82,7 @@ harvest({
 内置：小步滚动+停滞检测、按 stableId 合并去重、慢速二遍补采、图片规范化（取卡内最大产品图，排除角标/占位）。
 返回 `stats.null_*` 空值计数——突然升高 = 站点改版预警，配合 experiences 笔记排查。
 
-CLI（可挂定时任务）：`node server/scrader-mcp.js --harvest '{"itemSelector":"a[href*=\"-g-\"]","maxItems":40}'`
+CLI（可挂定时任务）：`node mcp-server/scrader-mcp.js --harvest '{"itemSelector":"a[href*=\"-g-\"]","maxItems":40}'`
 
 ## 决策链（decide）
 
@@ -100,9 +100,9 @@ CLI（可挂定时任务）：`node server/scrader-mcp.js --harvest '{"itemSelec
 ## 开发与测试
 
 ```bash
-node server/selftest.js      # 全链路自测（桥接+模拟扩展+MCP stdio+harvest 代码生成，无需 Chrome）
-node server/test-decide.js   # 决策 API 连通性
-node server/scrader-mcp.js --check
+node mcp-server/selftest.js      # 全链路自测（桥接+模拟扩展+MCP stdio+harvest 代码生成，无需 Chrome）
+node mcp-server/test-decide.js   # 决策 API 连通性
+node mcp-server/scrader-mcp.js --check
 ```
 
 ## Roadmap

@@ -2,7 +2,7 @@
  * scrader background service worker
  * ─────────────────────────────────────────────────────────────
  * 职责：
- *  1. 作为 WebSocket 客户端连接本地桥接进程 server/bridge.js（默认 127.0.0.1:7827）
+ *  1. 作为 WebSocket 客户端连接本地桥接进程 mcp-server/bridge.js（默认 127.0.0.1:7827）
  *  2. 接收桥接转发的工具调用（来自任意 Agent 的 MCP 请求），分发到
  *     chrome.tabs / chrome.scripting / chrome.debugger / 页面注入函数
  *     （决策 decide 在 MCP 服务器侧执行，密钥配置与扩展无关）

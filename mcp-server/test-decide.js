@@ -16,7 +16,7 @@ const CFG_FILE = process.env.SCRADER_PROVIDERS || path.join(userConfigDir(), 'co
 
 async function main() {
   if (!fs.existsSync(CFG_FILE)) {
-    console.log(`未找到配置：${CFG_FILE}\n把 server/providers.example.json 复制过去并填 Key`);
+    console.log(`未找到配置：${CFG_FILE}\n把 mcp-server/providers.example.json 复制过去并填 Key`);
     process.exit(1);
   }
   const cfg = JSON.parse(fs.readFileSync(CFG_FILE, 'utf8'));

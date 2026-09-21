@@ -9,7 +9,7 @@
  * Agent 配置示例（ZCode workspace .zcode/config.json）：
  *   { "mcp": { "servers": { "scrader": {
  *       "command": "node",
- *       "args": ["C:/path/to/scrader/server/scrader-mcp.js"]
+ *       "args": ["C:/path/to/scrader/mcp-server/scrader-mcp.js"]
  *   } } } }
  * 环境变量：SCRADER_PORT（默认 7827，需与扩展选项页一致）
  */
@@ -336,7 +336,7 @@ async function handleCall(params) {
     if (local) return { content: [{ type: 'text', text: JSON.stringify(local, null, 2) }] };
     const msg = localErr
       ? '决策链失败: ' + localErr
-      : '决策提供方未配置：把模板 scrader/server/providers.example.json 复制为 ' + CFG_FILE + ' 并填入 Key，或设置 SCRADER_TYPESAFE_API_KEY / SCRADER_OPENROUTER_API_KEY / SCRADER_LLM_* 环境变量。';
+      : '决策提供方未配置：把模板 mcp-server/providers.example.json 复制为 ' + CFG_FILE + ' 并填入 Key，或设置 SCRADER_TYPESAFE_API_KEY / SCRADER_OPENROUTER_API_KEY / SCRADER_LLM_* 环境变量。';
     return { content: [{ type: 'text', text: msg }], isError: true };
   }
 

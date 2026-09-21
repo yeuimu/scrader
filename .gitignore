@@ -1,6 +1,6 @@
 # 个人配置（密钥）永不入库 —— 唯一合法位置是用户配置目录：
 #   Windows: %APPDATA%\scrader_mcp\config.json   其他: ~/.config/scrader_mcp/config.json
-server/providers.json
+mcp-server/providers.json
 config.json
 
 node_modules/
