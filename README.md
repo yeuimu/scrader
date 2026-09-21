@@ -25,9 +25,16 @@ The extension owns the browser; the bridge auto-spawns when needed.
 1. **Extension** — `chrome://extensions` → Developer mode → *Load unpacked* → select `chrome-extension/`
 2. **MCP server** — add to any MCP client config:
    ```json
-   { "mcp": { "servers": { "scrader": {
-     "command": "node", "args": ["<repo-path>/mcp-server/scrader-mcp.js"]
-   } } } }
+   {
+     "mcp": {
+       "servers": {
+         "scrader": {
+           "command": "node",
+           "args": ["<repo-path>/mcp-server/scrader-mcp.js"]
+         }
+       }
+     }
+   }
    ```
 3. **Decision key** (optional, only for `decide`) — copy `mcp-server/providers.example.json` to:
    - Windows: `%APPDATA%\scrader_mcp\config.json`

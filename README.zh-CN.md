@@ -25,9 +25,16 @@ Agent (MCP stdio) ── scrader-mcp.js ── HTTP 127.0.0.1:7827 ── bridge
 1. **扩展** —— `chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」→ 选 `chrome-extension/`
 2. **MCP 服务器** —— 任意 MCP 客户端配置加一条：
    ```json
-   { "mcp": { "servers": { "scrader": {
-     "command": "node", "args": ["<仓库路径>/mcp-server/scrader-mcp.js"]
-   } } } }
+   {
+     "mcp": {
+       "servers": {
+         "scrader": {
+           "command": "node",
+           "args": ["<仓库路径>/mcp-server/scrader-mcp.js"]
+         }
+       }
+     }
+   }
    ```
 3. **决策 Key**（可选，仅 `decide` 需要）—— 把 `mcp-server/providers.example.json` 复制为：
    - Windows：`%APPDATA%\scrader_mcp\config.json`
