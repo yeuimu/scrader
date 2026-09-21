@@ -53,6 +53,7 @@ Restart the agent session — tools appear as `mcp__scrader__*`.
 | Read | `read_page` `snapshot` `extract` `screenshot` |
 | Act | `evaluate` `click` `fill` `press_key` `scroll` `wait_for` |
 | Scrape / decide | `harvest` `decide` |
+| Desktop (optional) | `desktop` |
 
 ### harvest example
 
@@ -69,6 +70,10 @@ harvest({
 ```
 
 `stats.null_*` spiking = the site changed its markup — check the `experiences/` notes in the config dir.
+
+## Desktop apps (optional)
+
+`desktop` proxies the local [cua](https://github.com/trycua/cua) CLI (`cua do …`) for native desktop automation. Install cua separately and run `cua do switch` once — the tool lights up; without it, everything else keeps working. Browser pages stay on scrader's own DOM-level tools.
 
 ## Security
 

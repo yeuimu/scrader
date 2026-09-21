@@ -53,6 +53,7 @@ Agent (MCP stdio) ── scrader-mcp.js ── HTTP 127.0.0.1:7827 ── bridge
 | 读取 | `read_page` `snapshot` `extract` `screenshot` |
 | 操作 | `evaluate` `click` `fill` `press_key` `scroll` `wait_for` |
 | 采集/决策 | `harvest` `decide` |
+| 桌面（可选） | `desktop` |
 
 ### harvest 示例
 
@@ -69,6 +70,10 @@ harvest({
 ```
 
 `stats.null_*` 突增 = 站点改版预警，查配置目录 `experiences/` 笔记。
+
+## 桌面应用（可选）
+
+`desktop` 代理本机 [cua](https://github.com/trycua/cua) CLI（`cua do …`），补上原生桌面应用自动化。另行安装 cua 并执行一次 `cua do switch` 即点亮；不装则优雅报错，不影响其他工具。浏览器页面操作仍走 scrader 本体的 DOM 级工具。
 
 ## 安全
 

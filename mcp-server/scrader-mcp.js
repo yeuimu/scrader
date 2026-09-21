@@ -19,10 +19,10 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 const readline = require('readline');
-const { spawn } = require('child_process');
+const { spawn, execFile, spawnSync } = require('child_process');
 
 const PORT = parseInt(process.env.SCRADER_PORT || '7827', 10);
-const VERSION = '0.4.2';
+const VERSION = '0.5.0';
 
 // ───────────────────── 用户级配置目录（平台自适应） ─────────────────────
 // SCRADER_CONFIG_DIR 环境变量 → Windows: %APPDATA%\scrader_mcp → 其余: ${XDG_CONFIG_HOME:-~/.config}/scrader_mcp
@@ -171,6 +171,41 @@ async function ensureBridge() {
   return false;
 }
 
+// ───────────────────── 可选桌面子系统：cua CLI 门面 ─────────────────────
+// 需本机另装 cua CLI（https://cua.ai/docs/tutorials/drive-your-first-app）并 `cua do switch` 选定本机。
+// 未安装时给出指引；不影响 scrader 其余工具。浏览器操作仍走扩展本体，这里只补桌面原生应用。
+
+function execFileP(cmd, list, opts) {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, list, opts, (err, stdout, stderr) => (err ? reject(Object.assign(err, { stdout, stderr })) : resolve({ stdout, stderr })));
+  });
+}
+
+async function runCuaDo(list) {
+  const quote = (a) => (/[\s"]/.test(a) ? '"' + a.replace(/"/g, '""') + '"' : a);
+  // 先解析真实可执行路径：Windows 上 .cmd 不存在时 cmd.exe 返回本地化错误文本而非 ENOENT，
+  // 不能靠捕获 ENOENT 判断未安装
+  const probe = process.platform === 'win32'
+    ? spawnSync('where', ['cua'], { encoding: 'utf8', windowsHide: true })
+    : spawnSync('which', ['cua'], { encoding: 'utf8' });
+  let cu = null;
+  if (probe.status === 0) {
+    if (process.platform === 'win32') {
+      const first = (probe.stdout || '').split('\n').map((s) => s.trim()).filter(Boolean)[0];
+      if (first) cu = { cmd: first, shell: /\.cmd$/i.test(first) };
+    } else cu = { cmd: 'cua', shell: false };
+  }
+  if (!cu) throw new Error('cua CLI 未安装或不在 PATH —— 桌面子系统未启用。安装见 https://cua.ai/docs/tutorials/drive-your-first-app（Windows 用 PowerShell 一行安装），装完先执行 `cua do switch` 选定本机目标');
+  try {
+    const argv = cu.shell ? ['do', ...list.map(quote)] : ['do', ...list];
+    const { stdout, stderr } = await execFileP(cu.cmd, argv, { timeout: 90000, windowsHide: true, shell: cu.shell });
+    return ((stdout || '') + (stdout ? '' : (stderr || ''))).trim();
+  } catch (e) {
+    const t = ((e.stderr || e.stdout || e.message || '') + '').trim();
+    throw new Error(t || `cua do ${list.join(' ')} 失败`);
+  }
+}
+
 // ───────────────────── 工具定义（MCP tools/list） ─────────────────────
 
 const S = {
@@ -232,6 +267,15 @@ const TOOLS_DEF = [
         },
       },
       required: ['itemSelector'],
+    },
+  },
+  {
+    name: 'desktop',
+    description: '桌面原生应用自动化（可选子系统，需本机已装 cua CLI 并 `cua do switch` 选定本机）：原样代理 `cua do <args>`。常用：["status"] / ["screenshot","--save","<路径>"] / ["click","<x>","<y>"] / ["dclick","<x>","<y>"] / ["type","<文本>"] / ["key","Enter"] / ["hotkey","ctrl+s"] / ["scroll","down","3"] / ["window","ls"] / ["open","<路径或URL>"]。坐标以截图图像空间为准。浏览器页面操作请仍用 scrader 本体工具（click/fill/scroll 等，走 DOM 精确定位）',
+    inputSchema: {
+      type: 'object',
+      properties: { args: { type: 'array', items: { type: 'string' }, description: 'cua do 的位置参数数组' } },
+      required: ['args'],
     },
   },
 ];
@@ -347,6 +391,18 @@ async function handleCall(params) {
     const j = r.json || {};
     if (!j.ok) return { content: [{ type: 'text', text: 'harvest 失败: ' + (j.error || ('HTTP ' + r.status)) }], isError: true };
     return { content: [{ type: 'text', text: JSON.stringify(j.data, null, 2) }] };
+  }
+
+  // desktop（可选）：代理本机 cua CLI，桌面原生应用自动化；未安装时返回安装指引
+  if (name === 'desktop') {
+    const list = (Array.isArray(args.args) ? args.args : []).map((s) => String(s));
+    if (!list.length) return { content: [{ type: 'text', text: '缺少 args（cua do 的位置参数，如 ["click","100","200"]）' }], isError: true };
+    try {
+      const out = await runCuaDo(list);
+      return { content: [{ type: 'text', text: out || '(cua do 无输出)' }] };
+    } catch (e) {
+      return { content: [{ type: 'text', text: 'desktop 失败: ' + ((e && e.message) || e) }], isError: true };
+    }
   }
 
   const timeoutMs = name === 'evaluate' || name === 'wait_for' ? 300000 : 90000;
