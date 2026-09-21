@@ -38,6 +38,7 @@ The extension owns the browser; the bridge auto-spawns when needed.
      }
    }
    ```
+   Or without cloning — `npx -y github:yeuimu/scrader` (Windows clients: wrap with `cmd /c npx ...`).
 3. **Decision key** (optional, only for `decide`) — copy `mcp-server/providers.example.json` to:
    - Windows: `%APPDATA%\scrader_mcp\config.json`
    - macOS / Linux: `~/.config/scrader_mcp/config.json`

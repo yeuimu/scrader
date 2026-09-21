@@ -38,6 +38,7 @@ Agent (MCP stdio) ── scrader-mcp.js ── HTTP 127.0.0.1:7827 ── bridge
      }
    }
    ```
+   免克隆方式——`npx -y github:yeuimu/scrader`（Windows 客户端用 `cmd /c npx ...` 包装）。
 3. **决策 Key**（可选，仅 `decide` 需要）—— 把 `mcp-server/providers.example.json` 复制为：
    - Windows：`%APPDATA%\scrader_mcp\config.json`
    - macOS / Linux：`~/.config/scrader_mcp/config.json`

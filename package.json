@@ -3,6 +3,9 @@
   "version": "0.4.1",
   "description": "scrader (spider + scraper) — browser operations & web scraping exposed as MCP tools for any AI Agent: trusted humanized input, generic list harvesting (harvest), optional Jev fast decisions",
   "license": "MIT",
+  "repository": { "type": "git", "url": "git+https://github.com/yeuimu/scrader.git" },
+  "homepage": "https://github.com/yeuimu/scrader#readme",
+  "bugs": { "url": "https://github.com/yeuimu/scrader/issues" },
   "bin": { "scrader-mcp": "mcp-server/scrader-mcp.js" },
   "files": [
     "mcp-server/scrader-mcp.js",
