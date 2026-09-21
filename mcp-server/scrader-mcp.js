@@ -22,7 +22,7 @@ const readline = require('readline');
 const { spawn } = require('child_process');
 
 const PORT = parseInt(process.env.SCRADER_PORT || '7827', 10);
-const VERSION = '0.4.1';
+const VERSION = '0.4.2';
 
 // ───────────────────── 用户级配置目录（平台自适应） ─────────────────────
 // SCRADER_CONFIG_DIR 环境变量 → Windows: %APPDATA%\scrader_mcp → 其余: ${XDG_CONFIG_HOME:-~/.config}/scrader_mcp
@@ -286,7 +286,7 @@ return (async () => {
   let last = -1, stag = 0;
   for (let i = 0; i < 60; i++) {
     window.scrollBy(0, Math.round(innerHeight * 0.9));
-    await wait(550);
+    await wait(400 + Math.random() * 500); // 步进间隔抖动，避免等距节奏指纹
     collect();
     if (MAX && items.size >= MAX) { await wait(800); collect(); break; }
     const y = window.scrollY;
@@ -299,7 +299,7 @@ return (async () => {
   window.scrollTo(0, 0); await wait(700); collect();
   for (let i = 0; i < 60; i++) {
     window.scrollBy(0, Math.round(innerHeight * 0.9));
-    await wait(600);
+    await wait(450 + Math.random() * 500);
     collect();
     const atEnd = window.scrollY + innerHeight >= document.documentElement.scrollHeight - 5;
     const nowNull = nullCount();
