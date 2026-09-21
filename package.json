@@ -1,0 +1,20 @@
+{
+  "name": "scrader-mcp",
+  "version": "0.4.1",
+  "description": "scrader (spider + scraper) — browser operations & web scraping exposed as MCP tools for any AI Agent: trusted humanized input, generic list harvesting (harvest), optional Jev fast decisions",
+  "license": "MIT",
+  "bin": { "scrader-mcp": "server/scrader-mcp.js" },
+  "files": [
+    "server/scrader-mcp.js",
+    "server/bridge.js",
+    "server/providers.example.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": { "node": ">=18" },
+  "keywords": ["mcp", "chrome-extension", "scraper", "browser-automation", "harvest", "jev"],
+  "scripts": {
+    "check": "node server/scrader-mcp.js --check",
+    "selftest": "node server/selftest.js"
+  }
+}
