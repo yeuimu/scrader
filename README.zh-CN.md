@@ -1,3 +1,5 @@
+<p align="center"><img src="chrome-extension/icons/icon128.png" width="96" alt="scrader 图标"></p>
+
 # scrader
 
 **S**pider + sc**r**aper —— 把浏览器操作与网页抓取封装成 [MCP](https://modelcontextprotocol.io) 工具，供任意 AI Agent（ZCode / Claude Desktop / Cursor / Cline …）直接调用。

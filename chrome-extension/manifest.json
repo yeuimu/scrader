@@ -3,10 +3,21 @@
   "name": "scrader",
   "version": "0.4.0",
   "description": "scrader (spider + scraper) — 把浏览器操作/网页抓取能力通过本地 MCP 桥暴露给任意 AI Agent，可选 Jev 快速决策",
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
   "minimum_chrome_version": "116",
   "background": { "service_worker": "background.js" },
   "options_page": "options.html",
-  "action": { "default_popup": "popup.html", "default_title": "scrader" },
+  "action": { "default_popup": "popup.html", "default_title": "scrader", "default_icon": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  } },
   "permissions": ["tabs", "scripting", "storage", "alarms", "debugger"],
   "host_permissions": ["<all_urls>"]
 }

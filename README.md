@@ -1,3 +1,5 @@
+<p align="center"><img src="chrome-extension/icons/icon128.png" width="96" alt="scrader icon"></p>
+
 # scrader
 
 **S**pider + sc**r**aper — browser operations & web scraping as [MCP](https://modelcontextprotocol.io) tools for any AI agent (ZCode / Claude Desktop / Cursor / Cline …).
