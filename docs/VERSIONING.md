@@ -15,6 +15,14 @@
 - gaze/weights：`eyes/gaze/weights/icon_detect/model.onnx`（OmniParser YOLO，CC-BY-4.0），
   模型文件升级需同步更新 `eyes/gaze/README` 中的精度/来源记录。
 
+## 外部依赖版本基准
+
+| 依赖 | 验证版本 | 验证日期 | 钉版方式 |
+|---|---|---|---|
+| cua-driver | 0.28.2 | 2026-09-22 | 安装: `$env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex`；回滚: `install.ps1 -Release <旧版>`（junction 切换） |
+
+升级流程：金丝雀机 update → npm run selftest + test/test-desktop-e2e.js + glide 冒烟 → 全绿后更新本表 → 其余机器钉装。
+
 ## CI 断言（.github/workflows/ci.yml）
 
 1. 全量 `node --check`
