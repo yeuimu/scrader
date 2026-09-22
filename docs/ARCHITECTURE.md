@@ -56,6 +56,8 @@ Agent ⇄ core/index.js (MCP stdio)
 
 决策端 `decide`：jev 通道按 `jevOrder` 过滤有 key 者依次尝试（网络抖动退避重试），LLM 兜底仅在配置了 apiKey 时参与，无 key 明确跳过不报 401。
 
+动作端 `eyes/vision_loop.js`：自主循环（截图→gaze_server 感知→jev 决策 next 动作→humanGlide+前台点击/逐字符键入→重感知），history 注入防重复，直到 goal_done/stuck/max-steps。实测：两步弹层目标（点开下拉→选默认排序）全自主完成。已知边界：jev 对"可见标签与目标措辞的字面匹配"依赖较强（搜索框里的 `sort:` 语法文本会抢匹配）；决策质量是闭环上限，震荡由 max-steps 兜底。
+
 ## 坐标铁律（踩坑固化）
 
 1. cua `click` 的 x,y = get_window_state 返回 PNG 的像素空间（感知 center_px 直接喂）

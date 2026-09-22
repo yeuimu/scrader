@@ -39,10 +39,17 @@ def parse_bytes(img_bytes: bytes, max_dim: int) -> dict:
     if img is None:
         raise ValueError("cannot decode image bytes")
     h, w = img.shape[:2]
+    # 每请求 max_dim：长边超限则先缩放再解析；bbox_norm 是 [0,1000] 空间无关真值，
+    # 像素坐标始终按原图 (w,h) 还原——调用方拿到的坐标与它发的截图同空间（cua click 空间）
+    small = img
+    long_side = max(w, h)
+    if max_dim > 0 and long_side > max_dim:
+        scale = max_dim / long_side
+        small = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale))))
     parser = STATE["parser"]
     t0 = time.time()
     with PARSE_LOCK:
-        merged = parser.parse(img)
+        merged = parser.parse(small)
         STATE["parses"] += 1
     dt = (time.time() - t0) * 1000
 
