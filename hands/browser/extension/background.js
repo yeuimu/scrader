@@ -692,6 +692,22 @@ const TOOLS = {
     const dataUrl = await chrome.tabs.captureVisibleTab(tab.windowId, { format: fmt, quality: 70 });
     return { mime: fmt === 'png' ? 'image/png' : 'image/jpeg', base64: dataUrl.split(',')[1] };
   },
+
+  // 文件上传：CDP DOM.setFileInputFiles —— 页面 JS 无法设置 <input type=file>，唯一程序化路径
+  set_files: async (a) => {
+    if (!a.selector || !Array.isArray(a.paths) || !a.paths.length) throw new Error('需要 selector 和 paths(绝对路径数组)');
+    const id = await resolveTab(a.tabId);
+    return withDebugger(async () => {
+      const t = await attachDbg(id);
+      try {
+        const { root: { nodeId } } = await chrome.debugger.sendCommand(t, 'DOM.getDocument', {});
+        const { nodeId: input } = await chrome.debugger.sendCommand(t, 'DOM.querySelector', { nodeId, selector: a.selector });
+        if (!input) throw new Error('input not found: ' + a.selector);
+        await chrome.debugger.sendCommand(t, 'DOM.setFileInputFiles', { files: a.paths, nodeId: input });
+        return { ok: true, files: a.paths.length };
+      } finally { try { await chrome.debugger.detach(t); } catch {} }
+    });
+  },
 };
 
 async function runTool(name, args) {
