@@ -12,11 +12,13 @@ async function getGeom(client, pid, wid) {
   return { bounds, pngW: ws.screenshot_width, pngH: ws.screenshot_height };
 }
 
-// PNG 坐标 → 屏幕坐标
-function pngToScreen(g, x, y) {
+// PNG 坐标 → 屏幕坐标。x,y 必须与 pngW,pngH 同一坐标空间：
+// 缺省用 getGeom 返回的 g.pngW/pngH（其内部截图是 max_dimension 压缩小图）；
+// 坐标若来自别处的全尺寸截图（如感知层 center_px），必须显式传那次的 pngW,pngH，否则缩放翻倍
+function pngToScreen(g, x, y, pngW = g.pngW, pngH = g.pngH) {
   return [
-    Math.round(g.bounds.x + x * g.bounds.width / g.pngW),
-    Math.round(g.bounds.y + y * g.bounds.height / g.pngH),
+    Math.round(g.bounds.x + x * g.bounds.width / pngW),
+    Math.round(g.bounds.y + y * g.bounds.height / pngH),
   ];
 }
 

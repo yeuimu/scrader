@@ -9,6 +9,7 @@ async function fetchRetry(url, headers, body, label, retries = 3) {
     try {
       res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json', ...headers }, body: JSON.stringify(body) });
     } catch (e) {
+      if (i < retries) { await new Promise((r) => setTimeout(r, 800 * Math.pow(2, i))); continue; } // 网络抖动同 429 一样退避重试
       throw new Error(`${label} 连接失败 (${e && e.message})`);
     }
     if ([429, 503, 529].includes(res.status) && i < retries) {
@@ -64,9 +65,13 @@ async function mcpDecide(a) {
     } catch (e) { errs.push('jev/' + p + ': ' + ((e && e.message) || e)); }
   }
   try {
-    const j = await llmDecide(cfg.llm, a);
-    if (j && j.answers) return { provider: 'llm:' + cfg.llm.model, answers: j.answers, degraded: errs.length ? errs : undefined, source: 'mcp' };
-    throw new Error('响应缺少 answers');
+    if (!(cfg.llm && cfg.llm.apiKey && cfg.llm.baseUrl && cfg.llm.model)) {
+      errs.push('llm: 未配置 apiKey，跳过兜底');
+    } else {
+      const j = await llmDecide(cfg.llm, a);
+      if (j && j.answers) return { provider: 'llm:' + cfg.llm.model, answers: j.answers, degraded: errs.length ? errs : undefined, source: 'mcp' };
+      throw new Error('响应缺少 answers');
+    }
   } catch (e) { errs.push('llm: ' + ((e && e.message) || e)); }
   throw new Error('MCP 侧决策链全部失败 —— ' + errs.join(' | '));
 }
