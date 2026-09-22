@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>scrader 设置</title>
+<style>
+  body { font: 13px/1.7 system-ui, sans-serif; background: #16181f; color: #e8eaf0; margin: 0; padding: 18px 22px; max-width: 560px; }
+  h2 { font-size: 15px; margin: 18px 0 8px; color: #8fd3ff; }
+  label { display: block; margin: 8px 0 2px; color: #9aa4b8; font-size: 12px; }
+  input { width: 100%; box-sizing: border-box; padding: 6px 8px; border-radius: 6px; border: 1px solid #3b4252; background: #1f2430; color: #e8eaf0; }
+  button { margin-top: 14px; padding: 7px 16px; border: 0; border-radius: 6px; background: #3b82f6; color: #fff; cursor: pointer; }
+  #msg { margin-top: 10px; min-height: 18px; color: #9ab; }
+  code { color: #8fd3ff; }
+  .hint { color: #9aa4b8; font-size: 12px; margin-top: 14px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<h1 style="font-size:16px;margin:0">🕷️ scrader 设置</h1>
+
+<h2>桥接</h2>
+<label>本地端口（与 bridge.js 一致，默认 7827）</label>
+<input id="port" type="number" value="7827">
+<label>域名 allowlist（<code>*</code> = 不限制；逗号分隔 glob，如 <code>https://www.temu.com/*,https://github.com/*</code>）</label>
+<input id="allow" type="text" value="*">
+
+<button id="save">保存</button>
+<div id="msg"></div>
+
+<div class="hint">
+  决策模型（Jev / LLM）的 Key 不在这里配置：v0.4.0 起统一放在用户配置目录——<br>
+  Windows <code>%APPDATA%\scrader_mcp\config.json</code>，macOS/Linux <code>~/.config/scrader_mcp/config.json</code>（模板见 mcp-server/providers.example.json）。<br>
+  站点采集经验笔记：<code>%APPDATA%\scrader_mcp\experiences\</code>
+</div>
+
+<script src="options.js"></script>
+</body>
+</html>

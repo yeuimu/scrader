@@ -1,10 +1,20 @@
-<p align="center"><img src="chrome-extension/icons/icon128.png" width="96" alt="scrader icon"></p>
+<p align="center"><img src="hands/browser/extension/icons/icon128.png" width="96" alt="scrader icon"></p>
 
 # scrader
 
 **S**pider + sc**r**aper — browser operations & web scraping as [MCP](https://modelcontextprotocol.io) tools for any AI agent (ZCode / Claude Desktop / Cursor / Cline …).
 
 [中文文档](README.zh-CN.md)
+
+## Layout
+
+```
+core/  brain: MCP API + decide + routing
+hands/ effectors: browser(extension+bridge+harvest) / cua(client+adapter+glide)
+eyes/  gaze: screenshot → YOLO+OCR → elements
+motion/ humanized trajectory (single source, dual backends)
+docs/ARCHITECTURE.md for details
+```
 
 ## Highlights
 
@@ -17,14 +27,14 @@
 ## Architecture
 
 ```
-Agent (MCP stdio) ── scrader-mcp.js ── HTTP 127.0.0.1:7827 ── bridge.js ── WebSocket ── Chrome extension (MV3)
+Agent (MCP stdio) ── core/index.js ── HTTP 127.0.0.1:7827 ── bridge.js ── WebSocket ── Chrome extension (MV3)
 ```
 
 The extension owns the browser; the bridge auto-spawns when needed.
 
 ## Install
 
-1. **Extension** — `chrome://extensions` → Developer mode → *Load unpacked* → select `chrome-extension/`
+1. **Extension** — `chrome://extensions` → Developer mode → *Load unpacked* → select `hands/browser/extension/`
 2. **MCP server** — add to any MCP client config:
    ```json
    {
@@ -32,14 +42,14 @@ The extension owns the browser; the bridge auto-spawns when needed.
        "servers": {
          "scrader": {
            "command": "node",
-           "args": ["<repo-path>/mcp-server/scrader-mcp.js"]
+           "args": ["<repo-path>/core/index.js"]
          }
        }
      }
    }
    ```
    Or without cloning — `npx -y github:yeuimu/scrader` (Windows clients: wrap with `cmd /c npx ...`).
-3. **Decision key** (optional, only for `decide`) — copy `mcp-server/providers.example.json` to:
+3. **Decision key** (optional, only for `decide`) — copy `core/providers.example.json` to:
    - Windows: `%APPDATA%\scrader_mcp\config.json`
    - macOS / Linux: `~/.config/scrader_mcp/config.json`
 
@@ -82,8 +92,8 @@ Bridge binds `127.0.0.1` only · keys live only in the user config dir (never in
 ## Dev
 
 ```bash
-node mcp-server/selftest.js     # full-chain selftest, no Chrome needed
-node mcp-server/scrader-mcp.js --check
+node test/selftest.js  # 或 npm run selftest     # full-chain selftest, no Chrome needed
+node core/index.js --check
 ```
 
 MIT

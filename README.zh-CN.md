@@ -1,10 +1,20 @@
-<p align="center"><img src="chrome-extension/icons/icon128.png" width="96" alt="scrader 图标"></p>
+<p align="center"><img src="hands/browser/extension/icons/icon128.png" width="96" alt="scrader 图标"></p>
 
 # scrader
 
 **S**pider + sc**r**aper —— 把浏览器操作与网页抓取封装成 [MCP](https://modelcontextprotocol.io) 工具，供任意 AI Agent（ZCode / Claude Desktop / Cursor / Cline …）直接调用。
 
 [English](README.md)
+
+## Layout
+
+```
+core/  brain: MCP API + decide + routing
+hands/ effectors: browser(extension+bridge+harvest) / cua(client+adapter+glide)
+eyes/  gaze: screenshot → YOLO+OCR → elements
+motion/ humanized trajectory (single source, dual backends)
+docs/ARCHITECTURE.md for details
+```
 
 ## 特性
 
@@ -17,14 +27,14 @@
 ## 架构
 
 ```
-Agent (MCP stdio) ── scrader-mcp.js ── HTTP 127.0.0.1:7827 ── bridge.js ── WebSocket ── Chrome 扩展 (MV3)
+Agent (MCP stdio) ── core/index.js ── HTTP 127.0.0.1:7827 ── bridge.js ── WebSocket ── Chrome 扩展 (MV3)
 ```
 
 扩展只管浏览器；bridge 不在运行时自动拉起。
 
 ## 安装
 
-1. **扩展** —— `chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」→ 选 `chrome-extension/`
+1. **扩展** —— `chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」→ 选 `hands/browser/extension/`
 2. **MCP 服务器** —— 任意 MCP 客户端配置加一条：
    ```json
    {
@@ -32,14 +42,14 @@ Agent (MCP stdio) ── scrader-mcp.js ── HTTP 127.0.0.1:7827 ── bridge
        "servers": {
          "scrader": {
            "command": "node",
-           "args": ["<仓库路径>/mcp-server/scrader-mcp.js"]
+           "args": ["<仓库路径>/core/index.js"]
          }
        }
      }
    }
    ```
    免克隆方式——`npx -y github:yeuimu/scrader`（Windows 客户端用 `cmd /c npx ...` 包装）。
-3. **决策 Key**（可选，仅 `decide` 需要）—— 把 `mcp-server/providers.example.json` 复制为：
+3. **决策 Key**（可选，仅 `decide` 需要）—— 把 `core/providers.example.json` 复制为：
    - Windows：`%APPDATA%\scrader_mcp\config.json`
    - macOS / Linux：`~/.config/scrader_mcp/config.json`
 
@@ -82,8 +92,8 @@ harvest({
 ## 开发
 
 ```bash
-node mcp-server/selftest.js     # 全链路自测，无需 Chrome
-node mcp-server/scrader-mcp.js --check
+node test/selftest.js  # 或 npm run selftest     # 全链路自测，无需 Chrome
+node core/index.js --check
 ```
 
 MIT

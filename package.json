@@ -1,24 +1,34 @@
 {
   "name": "scrader-mcp",
-  "version": "0.4.1",
+  "version": "0.6.0",
   "description": "scrader (spider + scraper) — browser operations & web scraping exposed as MCP tools for any AI Agent: trusted humanized input, generic list harvesting (harvest), optional Jev fast decisions",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/yeuimu/scrader.git" },
-  "homepage": "https://github.com/yeuimu/scrader#readme",
-  "bugs": { "url": "https://github.com/yeuimu/scrader/issues" },
-  "bin": { "scrader-mcp": "mcp-server/scrader-mcp.js" },
+  "bin": {
+    "scrader-mcp": "core/index.js"
+  },
   "files": [
-    "mcp-server/scrader-mcp.js",
-    "mcp-server/bridge.js",
-    "mcp-server/providers.example.json",
+    "core/",
+    "hands/browser/bridge.js",
+    "hands/browser/harvest.js",
+    "hands/cua/",
     "README.md",
     "README.zh-CN.md",
     "LICENSE"
   ],
-  "engines": { "node": ">=18" },
-  "keywords": ["mcp", "chrome-extension", "scraper", "browser-automation", "harvest", "jev"],
   "scripts": {
-    "check": "node mcp-server/scrader-mcp.js --check",
-    "selftest": "node mcp-server/selftest.js"
+    "test": "node motion/trajectory.test.js && node scripts/build-extension.js --check",
+    "selftest": "node test/selftest.js",
+    "build:extension": "node scripts/build-extension.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yeuimu/scrader.git"
+  },
+  "homepage": "https://github.com/yeuimu/scrader#readme",
+  "bugs": {
+    "url": "https://github.com/yeuimu/scrader/issues"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
