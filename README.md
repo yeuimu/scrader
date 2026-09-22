@@ -108,6 +108,7 @@ Install and configure scrader (generic browser/desktop controller) on this machi
    - scrader-extension-<version>.zip (browser extension)
    - gaze-weights-<version>.zip (visual perception weights)
    - Source code (zip) (server sources; unzip to a fixed directory; Node >= 18 required)
+   (If asset zips are not yet attached: the Source code package alone suffices — load the unpacked extension from hands/browser/extension/, and eyes/gaze/weights/ already contains all YOLO+OCR weights)
 2) Extension: chrome://extensions -> Developer mode -> "Load unpacked" -> select the unzipped extension folder.
 3) MCP config: add a server to your host's MCP config — command=node, args=["<sources>/core/index.js"] — then reload MCP.
 4) decide (optional): ask me whether I have a TypeSafe Jev API key; if yes, copy <sources>/core/providers.example.json

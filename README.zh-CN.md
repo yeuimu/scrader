@@ -108,6 +108,7 @@ MIT
    - scrader-extension-<版本>.zip（浏览器扩展）
    - gaze-weights-<版本>.zip（视觉感知权重）
    - Source code (zip)（服务端源码，解压到固定目录，需 Node ≥ 18）
+   （若 Release 页暂无扩展/权重附件：直接用 Source code 包——内含扩展源码 hands/browser/extension/ 可直接加载、eyes/gaze/weights/ 已内置 YOLO+OCR 全部权重）
 2) 扩展安装：chrome://extensions → 开发者模式 → 「加载已解压的扩展程序」→ 选扩展解压目录；
 3) MCP 配置：在宿主的 MCP 配置里添加 server——command=node，args=["<源码目录>/core/index.js"]——然后重载 MCP；
 4) decide 快速决策（可选）：询问我是否有 TypeSafe Jev 的 API Key；有则把 <源码目录>/core/providers.example.json
