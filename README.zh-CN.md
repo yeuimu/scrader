@@ -98,18 +98,25 @@ node core/index.js --check
 
 MIT
 
-## Agent 配置引导（复制给任意 AI Agent）
+## Agent 安装使用
 
-> 把下面的提示词发给任何支持 MCP 的 Agent（ZCode / Claude Code / Cursor …），它会完成配置并自检。技能件（使用决策树 + 实战铁律）在本仓库 `skills/scrader/SKILL.md`，复制到 Agent 的 skills 目录即可自动触发。
+> 把下面的提示词发给任何支持 MCP 的 Agent，它会完成安装配置并自检。使用决策树与实战铁律见 `skills/scrader/SKILL.md`（复制到 Agent 的 skills 目录可自动触发）。
 
 ```text
-请在本机配置 scrader（通用浏览器/桌面控制器，仓库：https://github.com/yeuimu/scrader）：
-1) git clone 到本地，确认 Node ≥ 18；
-2) 运行 npm run pack:extension，把 dist/scrader-extension-<版本>.zip 解压到一个固定目录；
-3) 指导我打开 chrome://extensions → 开发者模式 → 「加载已解压的扩展程序」，选解压目录；
-4) 把 MCP 入口写入你的配置（ZCode: .zcode/config.json 的 mcp.servers.scrader，command=node，args=["<仓库>/core/index.js"]；Claude Desktop / Cursor 同理），然后重载 MCP；
-5) 可选（decide 快速决策）：把 core/providers.example.json 复制为 %APPDATA%/scrader_mcp/config.json，让我填入 Jev Key；
-6) 可选（Windows 桌面自动化）：PowerShell 执行 $env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex，再 cua-driver autostart kick；
-7) 验证：调用 scrader 的 status 工具应显示扩展已连接，再对任一打开的页面执行 read_page 确认全链路。
+请在本机安装并配置 scrader（通用浏览器/桌面控制器）：
+1) 打开 https://github.com/yeuimu/scrader/releases 页面，下载三个包：
+   - scrader-extension-<版本>.zip（浏览器扩展）
+   - gaze-weights-<版本>.zip（视觉感知权重）
+   - Source code (zip)（服务端源码，解压到固定目录，需 Node ≥ 18）
+2) 扩展安装：chrome://extensions → 开发者模式 → 「加载已解压的扩展程序」→ 选扩展解压目录；
+3) MCP 配置：在宿主的 MCP 配置里添加 server——command=node，args=["<源码目录>/core/index.js"]——然后重载 MCP；
+4) decide 快速决策（可选）：询问我是否有 TypeSafe Jev 的 API Key；有则把 <源码目录>/core/providers.example.json
+   复制为用户配置目录（Windows: %APPDATA%/scrader_mcp/，其余: ~/.config/scrader_mcp/）下的 config.json 并填入 Key；
+5) cua-driver 桌面自动化（需要安装）：PowerShell 执行
+   $env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex
+   然后 cua-driver autostart kick；
+6) 感知权重：把 gaze-weights-<版本>.zip 解压到 <源码目录>/eyes/gaze/weights/（YOLO 图标检测 + OCR 识别权重）；
+   Python 侧依赖：uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python <源码目录>/eyes/gaze/gaze.py --help 自检；
+7) 验证：scrader 的 status 工具显示扩展已连接；read_page 任一打开的页面全链路通；desktop 调 list_apps 确认 cua 正常。
 逐项执行；需要我确认的操作（扩展加载、填 Key）再问我。完成后按 skills/scrader/SKILL.md 的决策树与铁律使用。
 ```

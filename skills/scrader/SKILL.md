@@ -19,28 +19,20 @@ description: 通用浏览器/桌面自动化控制器（MCP）。当用户要求
 | 拟人滑行/点击（真实指针） | `hands/cua/glide.js`（消费 motion timeline） | 用于强风控关键动作 |
 | 数据导出 Excel | 用户目录 recipes/ 配方（如 recipes/temu/export_temu_xlsx.py） | 配方属场景，不在本仓库 |
 
-## 新机器配置（按需三层，逐级加装）
+## 新机器安装（全部来自 GitHub Release，无需 clone）
 
-**第 1 层 · 浏览器（必装）**
-```bash
-git clone https://github.com/yeuimu/scrader && cd scrader   # 需 Node ≥ 18
-npm run pack:extension    # 产出 dist/scrader-extension-<版本>.zip
-```
-解压 zip → `chrome://extensions` → 开发者模式 → 加载已解压的扩展程序。
-MCP 配置（ZCode `.zcode/config.json`；Claude Desktop / Cursor 同理）：
-```json
-{ "mcp": { "servers": { "scrader": { "command": "node", "args": ["<repo>/core/index.js"] } } } }
-```
+打开 https://github.com/yeuimu/scrader/releases 下载：扩展 zip、gaze-weights zip、Source code。
 
-**第 2 层 · 决策 Key（可选，仅 decide 需要）**
-`core/providers.example.json` → 复制为 `%APPDATA%\scrader_mcp\config.json`（Windows）/ `~/.config/scrader_mcp/config.json`（其余）并填 Jev Key；或用 `SCRADER_TYPESAFE_API_KEY` 等环境变量。
+**1. 浏览器面（必装）**：解压扩展 zip → `chrome://extensions` → 开发者模式 → 加载已解压；服务端源码解压后，在宿主 MCP 配置添加：`command=node, args=["<源码目录>/core/index.js"]`。
 
-**第 3 层 · 桌面 cua-driver（可选，Windows）**
-```powershell
+**2. cua-driver 桌面面（必装，Windows）**：```powershell
 $env:CUA_DRIVER_RS_VERSION = "0.28.2"; irm https://cua.ai/driver/install.ps1 | iex
 cua-driver autostart kick
 ```
-视觉感知（可选，需 uv）：`uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python eyes/gaze/gaze.py <截图.png>`
+
+**3. decide 决策（可选）**：询问用户是否有 TypeSafe Jev Key；有则 `core/providers.example.json` → 用户配置目录 `config.json`（Windows `%APPDATA%scrader_mcp`，其余 `~/.config/scrader_mcp/`）填入，或用环境变量。
+
+**4. gaze 视觉感知**：gaze-weights zip 解压到 `eyes/gaze/weights/`（YOLO 图标检测 + OCR 识别权重）；Python 依赖：`uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python eyes/gaze/gaze.py <截图.png>`
 
 **验证**：调 scrader 的 `status` 工具（扩展已连接）→ `read_page` 任一页面 → 全链路通。
 
