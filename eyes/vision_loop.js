@@ -36,6 +36,12 @@ function gazeParse(pngBuf, port, maxDim) {
   const typeText = argvFlag('type-text', '');
   const maxSteps = Number(argvFlag('max-steps', '6'));
   const minConf = Number(argvFlag('min-conf', '0.6')); // 动作类选择门槛；goal_done/stuck 无破坏性，不受此限
+  const escalate = process.argv.includes('--escalate'); // 低置信时写 ask.json 等上级裁决（两级决策脑）
+  const typeClear = process.argv.includes('--type-clear'); // 键入前先全选删除（替换语义）
+  const escTimeout = Number(argvFlag('escalate-timeout', '180'));
+  const ESC_DIR = path.resolve('.vision-escalate');
+  const ASK_FILE = path.join(ESC_DIR, 'ask.json');
+  const ANS_FILE = path.join(ESC_DIR, 'answer.json');
   const port = Number(argvFlag('port', '8765'));
   const maxDim = Number(argvFlag('max-dim', '768'));
   if (!goal) { console.error('缺少 --goal'); process.exit(2); }
@@ -104,17 +110,49 @@ function gazeParse(pngBuf, port, maxDim) {
         },
         questions: { next: { type: 'choice', criteria, instructions: `当前任务：${goal}。历史动作 ${history.length ? JSON.stringify(history) : '（无，第一步）'}。page_diff 是上一动作引起的页面文本变化（新增/消失），可作为该动作是否生效的证据。${repeatWarn}${typeHint}点击后新出现的弹层/菜单项也会出现在候选里。目标已完成选 goal_done，无法推进选 stuck。` } },
       });
-      const ans = d.answers && d.answers.next;
+      let ans = d.answers && d.answers.next;
       if (!ans) throw new Error('决策无答案');
-      const mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
-      const elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
+      let mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
+      let elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
       console.log(`[step ${step}] 决策 ${d.provider} → ${ans.choice}${elLog ? '("' + (elLog.text || '').slice(0, 20) + '")' : ''} (conf=${ans.confidence})`);
       if (ans.choice === 'goal_done') { console.log('✅ goal_done'); result = 'goal_done'; break; }
       if (ans.choice === 'stuck') { console.log('⛔ stuck'); result = 'stuck'; break; }
+
+      // 2.5) 两级决策脑：动作置信度不足时，把完整决策上下文写给上级（调用方主模型），轮询裁决文件
       if ((ans.confidence ?? 0) < minConf && /^(click|type)_|enter|scroll$/.test(ans.choice)) {
-        console.log(`⛔ 动作置信度 ${ans.confidence} < ${minConf}，拒绝盲动（模糊目标需要更明确的措辞或更聪明的决策者）`);
-        result = 'low_confidence';
-        break;
+        if (!escalate) {
+          console.log(`⛔ 动作置信度 ${ans.confidence} < ${minConf}，拒绝盲动（--escalate 可启用上级裁决）`);
+          result = 'low_confidence';
+          break;
+        }
+        fs.rmSync(ANS_FILE, { force: true });
+        const ask = {
+          goal, step, history, page_diff: pageDiff, type_text: typeText || null,
+          jev_answer: { choice: ans.choice, confidence: ans.confidence },
+          candidates: cands.map((e) => ({ id: e.id, text: (e.text || '').slice(0, 30), center_px: e.center_px })),
+          allowed: Object.keys(criteria), how: '写 ' + ANS_FILE + '：{"choice":"<allowed之一>"}',
+        };
+        fs.mkdirSync(ESC_DIR, { recursive: true });
+        fs.writeFileSync(ASK_FILE, JSON.stringify(ask, null, 1));
+        console.log(`[step ${step}] ⏳ 置信度 ${ans.confidence} < ${minConf}，等待上级裁决: ${ASK_FILE}（≤${escTimeout}s）`);
+        let answer = null;
+        const deadline = Date.now() + escTimeout * 1000;
+        while (Date.now() < deadline) {
+          await sleep(2000);
+          if (fs.existsSync(ANS_FILE)) {
+            try { answer = JSON.parse(fs.readFileSync(ANS_FILE, 'utf8')); } catch { answer = null; }
+            fs.rmSync(ANS_FILE, { force: true });
+            break;
+          }
+        }
+        fs.rmSync(ASK_FILE, { force: true });
+        if (!answer || !answer.choice || !ask.allowed.includes(answer.choice)) {
+          console.log('⛔ 上级裁决超时或无效'); result = 'low_confidence'; break;
+        }
+        console.log(`[step ${step}] 上级裁决 → ${answer.choice}`);
+        ans = { choice: answer.choice, confidence: answer.confidence ?? 1 };
+        mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
+        elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
       }
       if (ans.choice === lastChoice) {
         repeatCount++;
@@ -140,6 +178,16 @@ function gazeParse(pngBuf, port, maxDim) {
         console.log(`[step ${step}] 滑轨 ${glide.dist}px/${glide.waypoints}wp/${glide.ms}ms → 屏幕(${sx},${sy})`);
         await c.call('click', { session: c.session, pid: win.pid, window_id: win.window_id, x: el.center_px[0], y: el.center_px[1], delivery_mode: 'foreground' });
         if (m[1] === 'type' && typeText) {
+          if (typeClear) { // 替换语义：END 到行尾后连发 BACKSPACE 清空。cua 特殊键名要大写（BACKSPACE），
+            // 小写会被静默丢弃；hotkey 组合键（ctrl+a）实测是哑弹，勿依赖
+            await c.call('press_key', { session: c.session, pid: win.pid, window_id: win.window_id, key: 'END', delivery_mode: 'foreground' });
+            await sleep(250);
+            for (let i = 0; i < 40; i++) {
+              await c.call('press_key', { session: c.session, pid: win.pid, window_id: win.window_id, key: 'BACKSPACE', delivery_mode: 'foreground' });
+              await sleep(45);
+            }
+            await sleep(250);
+          }
           for (const ch of typeText) {
             await c.call('press_key', { session: c.session, pid: win.pid, window_id: win.window_id, key: ch, delivery_mode: 'foreground' });
             await sleep(120);

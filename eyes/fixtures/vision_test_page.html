@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<title>VisionLoop 测试页</title>
+<style>
+  body { font-family: "Microsoft YaHei", sans-serif; background: #fff; color: #111; padding: 40px; }
+  h1 { font-size: 34px; }
+  p { font-size: 20px; }
+  input { font-size: 26px; padding: 10px 14px; width: 420px; border: 2px solid #333; border-radius: 6px; }
+  button { font-size: 22px; padding: 10px 22px; margin-left: 12px; }
+  #echo { font-size: 22px; margin-top: 24px; color: #060; }
+</style>
+</head>
+<body>
+<h1>视觉循环测试页</h1>
+<p>这是一个本地固定装置，用于 vision_loop 的无干扰端到端验证。</p>
+<div>
+  <input id="q" value="abc" placeholder="在这里输入">
+  <button onclick="document.getElementById('echo').textContent='已提交：'+document.getElementById('q').value">提交</button>
+</div>
+<div id="echo"></div>
+</body>
+</html>
