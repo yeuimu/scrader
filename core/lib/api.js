@@ -64,11 +64,11 @@ const TOOLS_DEF = [
   },
   {
     name: 'desktop',
-    description: '桌面原生应用自动化（可选子系统，需本机 cua-driver 守护进程）：代理 `cua-driver call <method> <json>`。方法全集用 desktop({method:"list_tools"}) 查；常用：list_apps / list_windows / get_window_state(pid[,window_id]) 返回 UIA 元素树（click 优先用其 element_index，后台 UIA Invoke，不抢焦点不动光标，最小化窗口也可点）/ click / type_text / press_key / hotkey / scroll / set_value(UIA ValuePattern) / invoke_menu / launch_app(SW_SHOWNOACTIVATE 不抢焦点) / kill_app / get_desktop_state(截图) / clipboard_read / verify_state。浏览器页面操作仍用 scrader 本体工具（DOM 精确定位）',
+    description: '桌面原生应用自动化（可选子系统，需本机 cua-driver 守护进程）。内置智能方法：find_window({title,exact}) 跨进程按标题枚举全部可见顶层窗口——对话框宿主 pid 每次都变，别只查已知 pid（window_id 即 Win32 hwnd，可直接续用于其他调用）；set_text({pid,window_id,element_token,value}) 原生控件写文本=UIA set_value+自动回读校验+重试——路径/含反斜杠或中文的文本必须走它，type_text 走 WM_CHAR 会吞反斜杠。type_text/press_key/hotkey 若带 pid+window_id 会先自动 bring_to_front（前台锁兜底，args.auto_front=false 关闭）。透传方法全集用 desktop({method:"list_tools"}) 查；常用：list_apps / list_windows / get_window_state(pid[,window_id]) 返回 UIA 元素树（click 优先用其 element_token，后台 UIA Invoke，不抢焦点不动光标，最小化窗口也可点；include_screenshot:false 可大幅减输出）/ click / set_value / scroll / invoke_menu / launch_app / kill_app / get_desktop_state / clipboard_read。浏览器页面操作仍用 scrader 本体工具（DOM 精确定位）',
     inputSchema: {
       type: 'object',
       properties: {
-        method: { type: 'string', description: 'cua-driver 方法名（list_tools 可查全集）' },
+        method: { type: 'string', description: '方法名：cua-driver 透传方法（list_tools 可查全集）或内置智能方法 find_window / set_text' },
         args: { type: 'object', description: '该方法的参数对象（schema 见 describe 或方法文档）' },
       },
       required: ['method'],

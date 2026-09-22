@@ -53,3 +53,10 @@ Agent ⇄ core/index.js (MCP stdio)
 2. 窗口会被人拖动/改尺寸：动作前重取几何，绝不缓存
 3. Chromium 拒收后台输入 → 一律 `delivery_mode:"foreground"`
 4. 元素语义裁决优先级：UIA label（get_window_state query）> VLM 看 SoM 图（辅助）> OCR 文本
+
+## 桌面窗口铁律（原生对话框之战固化，adapter 智能层已内置）
+
+1. 原生控件写文本一律 `set_text`：先 UIA set_value，控件无 ValuePattern（经典记事本等）自动转键盘兜底（反斜杠走 press_key 真键码——type_text 的 WM_CHAR 在部分输入法下吞 `\`），写完自动回读校验
+2. 对话框宿主 pid 每次都变 → `find_window({title})` 按标题跨进程枚举（PowerShell EnumWindows；cua-driver 的 window_id 即 Win32 hwnd，可直接续用）
+3. 键盘类注入（type_text/press_key/hotkey）可能被 Windows 前台锁吞 → adapter 自动先 bring_to_front（args.auto_front=false 关闭）
+4. 合成组合键可能泄漏裸键（ctrl+a 打出"a"）→ 永远以回读校验为准，不信"发送成功"

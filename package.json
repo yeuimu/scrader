@@ -16,7 +16,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node motion/trajectory.test.js && node scripts/build-extension.js --check",
+    "test": "node motion/trajectory.test.js && node test/test-cua-smart.js && node scripts/build-extension.js --check",
     "selftest": "node test/selftest.js",
     "build:extension": "node scripts/build-extension.js",
     "pack:extension": "node scripts/pack-extension.js"

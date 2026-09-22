@@ -83,7 +83,7 @@ harvest({
 
 ## 桌面应用（可选）
 
-`desktop` 代理本机 [cua-driver](https://github.com/trycua/cua) 守护进程（`cua-driver call <method> <json>`），补上原生桌面应用自动化——UIA 元素级点击，后台执行不抢焦点。安装（PowerShell）：`irm https://cua.ai/driver/install.ps1 | iex; cua-driver autostart kick`，装好即点亮；不装则优雅报错，不影响其他工具。浏览器页面操作仍走 scrader 本体的 DOM 级工具。
+`desktop` 代理本机 [cua-driver](https://github.com/trycua/cua) 守护进程（`cua-driver call <method> <json>`），补上原生桌面应用自动化——UIA 元素级点击，后台执行不抢焦点。内置智能方法：`find_window({title})` 按标题跨进程找窗口（对话框宿主 pid 每次都变，别只查已知 pid）；`set_text({pid,window_id,element_token,value})` 原生控件写文本（UIA set_value → 键盘兜底，反斜杠安全，自动回读校验）；键盘类方法自动先 bring_to_front 兜前台锁。安装（PowerShell）：`irm https://cua.ai/driver/install.ps1 | iex; cua-driver autostart kick`，装好即点亮；不装则优雅报错，不影响其他工具。浏览器页面操作仍走 scrader 本体的 DOM 级工具。
 
 ## 安全
 

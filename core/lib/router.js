@@ -8,7 +8,7 @@ const { TOOLS_DEF } = require('./api');
 const { mcpDecide } = require('./decide');
 const { CFG_FILE } = require('./providers');
 const { genHarvestCode } = require('../../hands/browser/harvest');
-const { runCuaCall } = require('../../hands/cua/adapter');
+const { runDesktop } = require('../../hands/cua/adapter');
 
 const PORT = parseInt(process.env.SCRADER_PORT || '7827', 10);
 
@@ -85,7 +85,7 @@ async function handleCall(params) {
     const method = String(args.method || '');
     if (!/^[a-z_][a-z0-9_]*$/i.test(method)) return { content: [{ type: 'text', text: 'method 需为合法方法名（如 list_apps / get_window_state / click）' }], isError: true };
     try {
-      const out = await runCuaCall(method, args.args && typeof args.args === 'object' ? args.args : {});
+      const out = await runDesktop(method, args.args && typeof args.args === 'object' ? args.args : {});
       return { content: [{ type: 'text', text: out || '(无输出)' }] };
     } catch (e) {
       const t = ((e && (e.stderr || e.stdout || e.message)) || String(e) || '').trim();
