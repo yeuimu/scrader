@@ -9,3 +9,6 @@ node_modules/
 
 # 运行期产物
 chrome_state.json
+
+# 打包产物
+dist/
