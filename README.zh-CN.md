@@ -97,3 +97,19 @@ node core/index.js --check
 ```
 
 MIT
+
+## Agent 配置引导（复制给任意 AI Agent）
+
+> 把下面的提示词发给任何支持 MCP 的 Agent（ZCode / Claude Code / Cursor …），它会完成配置并自检。技能件（使用决策树 + 实战铁律）在本仓库 `skills/scrader/SKILL.md`，复制到 Agent 的 skills 目录即可自动触发。
+
+```text
+请在本机配置 scrader（通用浏览器/桌面控制器，仓库：https://github.com/yeuimu/scrader）：
+1) git clone 到本地，确认 Node ≥ 18；
+2) 运行 npm run pack:extension，把 dist/scrader-extension-<版本>.zip 解压到一个固定目录；
+3) 指导我打开 chrome://extensions → 开发者模式 → 「加载已解压的扩展程序」，选解压目录；
+4) 把 MCP 入口写入你的配置（ZCode: .zcode/config.json 的 mcp.servers.scrader，command=node，args=["<仓库>/core/index.js"]；Claude Desktop / Cursor 同理），然后重载 MCP；
+5) 可选（decide 快速决策）：把 core/providers.example.json 复制为 %APPDATA%/scrader_mcp/config.json，让我填入 Jev Key；
+6) 可选（Windows 桌面自动化）：PowerShell 执行 $env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex，再 cua-driver autostart kick；
+7) 验证：调用 scrader 的 status 工具应显示扩展已连接，再对任一打开的页面执行 read_page 确认全链路。
+逐项执行；需要我确认的操作（扩展加载、填 Key）再问我。完成后按 skills/scrader/SKILL.md 的决策树与铁律使用。
+```

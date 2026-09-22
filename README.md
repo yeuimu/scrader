@@ -97,3 +97,19 @@ node core/index.js --check
 ```
 
 MIT
+
+## Agent onboarding prompt (paste to any AI agent)
+
+> Send the prompt below to any MCP-capable agent (ZCode / Claude Code / Cursor …) to configure and verify scrader. The skill file (usage decision tree + battle-tested rules) lives at `skills/scrader/SKILL.md` — copy it into the agent's skills directory for auto-triggering.
+
+```text
+Configure scrader (generic browser/desktop controller, repo: https://github.com/yeuimu/scrader) on this machine:
+1) git clone the repo; verify Node >= 18.
+2) Run npm run pack:extension; unzip dist/scrader-extension-<version>.zip to a fixed directory.
+3) Guide me to chrome://extensions -> Developer mode -> "Load unpacked" -> select the unzipped folder.
+4) Add the MCP entry to your config (ZCode: .zcode/config.json mcp.servers.scrader, command=node, args=["<repo>/core/index.js"]; Claude Desktop / Cursor likewise), then reload MCP.
+5) Optional (decide tool): copy core/providers.example.json to %APPDATA%/scrader_mcp/config.json and ask me to fill the Jev key.
+6) Optional (Windows desktop automation): in PowerShell run $env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex, then cua-driver autostart kick.
+7) Verify: the scrader status tool should report the extension connected; run read_page on any open page to confirm the full chain.
+Proceed step by step; ask me before actions needing confirmation (extension load, key entry). Then follow the decision tree and rules in skills/scrader/SKILL.md.
+```
