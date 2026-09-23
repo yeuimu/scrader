@@ -6,6 +6,7 @@
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
+const crypto = require('crypto');
 const { createClient } = require('../hands/cua/client');
 const { humanGlide } = require('../hands/cua/glide');
 const { pngToScreen } = require('../hands/cua/geom');
@@ -18,9 +19,10 @@ function argvFlag(name, dflt) {
 }
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-function gazeParse(pngBuf, port, maxDim) {
+function gazeParse(pngBuf, port, maxDim, crop) {
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: '127.0.0.1', port, path: '/parse?max_dim=' + maxDim, method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': pngBuf.length } }, (res) => {
+    const p = '/parse?max_dim=' + maxDim + (crop ? '&crop=' + crop : '');
+    const req = http.request({ host: '127.0.0.1', port, path: p, method: 'POST', headers: { 'Content-Type': 'application/octet-stream', 'Content-Length': pngBuf.length } }, (res) => {
       let b = '';
       res.on('data', (d) => (b += d));
       res.on('end', () => { try { resolve(JSON.parse(b)); } catch (e) { reject(new Error('gaze 响应异常: ' + b.slice(0, 200))); } });
@@ -56,13 +58,15 @@ function gazeParse(pngBuf, port, maxDim) {
   const history = [];
   let pendingShot = null; // 上一轮动作后的稳定帧（感知预取），下一轮直接消费
   let prevCands = null;      // 上一步文本候选（做 page_diff 证据）
+  let lastPngSha = null, lastG = null; // 画面未变时整页感知复用
+  let typeVerified = 0, typeVerifyFailed = 0;
   let lastChoice = null;     // 上一步选择（防重复）
   let repeatCount = 0;
   let parseMsTotal = 0;
   let degradedCount = 0;
   let result = 'max_steps';
 
-  const c = createClient({ session: 'vision-loop', clientName: 'vision-loop' });
+  const c = createClient({ session: 'vision-' + win.window_id, clientName: 'vision-loop' });
   await c.init();
   try {
     for (let step = 1; step <= maxSteps; step++) {
@@ -74,11 +78,13 @@ function gazeParse(pngBuf, port, maxDim) {
       const imgItem = (r.content || []).find((x) => x.type === 'image');
       if (!imgItem || !imgItem.data) throw new Error('get_window_state 未返回截图');
       const png = Buffer.from(imgItem.data, 'base64');
-      const g = await gazeParse(png, port, maxDim);
-      parseMsTotal += g.parse_ms;
+      const pngSha = crypto.createHash('sha1').update(png).digest('hex');
+      let g, reused = false;
+      if (pngSha === lastPngSha && lastG) { g = lastG; reused = true; }
+      else { g = await gazeParse(png, port, maxDim); parseMsTotal += g.parse_ms; lastPngSha = pngSha; lastG = g; }
       const cands = g.elements.filter((e) => e.kind === 'text' && e.center_px[1] >= 100 && (e.text || '').trim().length > 1).slice(0, 80);
       const icons = g.elements.filter((e) => e.kind === 'icon' && e.center_px[1] >= 100).slice(0, 12);
-      console.log(`\n[step ${step}] 感知 ${g.parse_ms}ms，文本候选 ${cands.length} 个，图标候选 ${icons.length} 个`);
+      console.log(`\n[step ${step}] 感知 ${g.parse_ms}ms${reused ? '（画面未变，复用上轮）' : ''}，文本候选 ${cands.length} 个，图标候选 ${icons.length} 个`);
 
       // 动作效果证据：与上一步感知做文本集合 diff（出现/消失）
       let pageDiff = null;
@@ -189,6 +195,10 @@ function gazeParse(pngBuf, port, maxDim) {
           } else {
             console.log('⛔ 上级裁决超时且 jev 原答案置信度过低'); result = 'low_confidence'; break;
           }
+        } else if (answer === 'goal_done') {
+          console.log('✅ goal_done（上级确认）'); result = 'goal_done'; break;
+        } else if (answer === 'stuck') {
+          console.log('⛔ stuck（上级确认）'); result = 'stuck'; break;
         } else {
           console.log(`[step ${step}] 上级裁决 → ${answer}`);
           ans = { choice: answer, confidence: 1 };
@@ -234,6 +244,20 @@ function gazeParse(pngBuf, port, maxDim) {
             await c.call('press_key', { session: c.session, pid: win.pid, window_id: win.window_id, key: ch, delivery_mode: 'foreground' });
             await sleep(120);
           }
+          // 键入落框验证：目标元素附近小区域裁剪 OCR（~1s），防焦点漂移静默丢失
+          await sleep(400);
+          try {
+            const rr = await c.call('get_window_state', { pid: win.pid, window_id: win.window_id, include_screenshot: true, max_elements: 1 });
+            const im2 = (rr.content || []).find((x) => x.type === 'image');
+            const png2 = Buffer.from(im2.data, 'base64');
+            const b = el.bbox_px;
+            const cx0 = Math.max(0, b[0] - 24), cy0 = Math.max(0, b[1] - 24);
+            const crop = [cx0, cy0, Math.min(g.image.width, b[2] + 24) - cx0, Math.min(g.image.height, b[3] + 24) - cy0].join(',');
+            const vr = await gazeParse(png2, port, 0, crop);
+            const hitText = vr.elements.some((e) => (e.text || '').includes(typeText));
+            if (hitText) { typeVerified++; console.log(`✓ 键入落框验证通过（裁剪OCR: "${vr.elements.map((e) => e.text).join(' ')}"）`); }
+            else { typeVerifyFailed++; console.log(`⚠ 键入未在目标区域读到（焦点可能丢失）: 裁剪OCR="${vr.elements.map((e) => e.text).join(' ')}"`); }
+          } catch (e) { console.log('⚠ 键入验证异常: ' + e.message); }
         }
       }
       history.push(elLog ? `${ans.choice}("${(elLog.text || '').slice(0, 16)}")` : ans.choice);
@@ -257,5 +281,5 @@ function gazeParse(pngBuf, port, maxDim) {
   } finally {
     await c.end();
   }
-  console.log(`\n==summary== ${JSON.stringify({ result, steps: history.length, actions: history, degraded_actions: degradedCount, parse_ms_total: parseMsTotal, goal })}`);
+  console.log(`\n==summary== ${JSON.stringify({ result, steps: history.length, actions: history, degraded_actions: degradedCount, type_verified: typeVerified, type_verify_failed: typeVerifyFailed, parse_ms_total: parseMsTotal, goal })}`);
 })().catch((e) => { console.error('ERR', e.message); process.exit(1); });

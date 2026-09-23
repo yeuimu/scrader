@@ -12,6 +12,7 @@ bbox_norm,center_norm,bbox_px,center_px}]}。坐标空间与请求图片一致�
 单线程锁串行解析（onnxruntime session 并发跑两个 parse 不保证安全，单 Agent 场景够用）。
 """
 import argparse
+import hashlib
 import json
 import logging
 import os
@@ -32,15 +33,46 @@ log = logging.getLogger("gaze_server")
 
 STATE = {"parser": None, "default_max_dim": 1366, "started": time.time(), "parses": 0}
 PARSE_LOCK = threading.Lock()
+CACHE = {}        # sha1(bytes)+max_dim+crop -> result（页面未变时整页解析直接秒回）
+CACHE_ORDER = []
+CACHE_MAX = 8
 
 
-def parse_bytes(img_bytes: bytes, max_dim: int) -> dict:
+def cache_get(key):
+    hit = CACHE.get(key)
+    if hit is not None:
+        out = dict(hit)
+        out["cache"] = "hit"
+        return out
+    return None
+
+
+def cache_put(key, result):
+    CACHE[key] = result
+    CACHE_ORDER.append(key)
+    if len(CACHE_ORDER) > CACHE_MAX:
+        CACHE.pop(CACHE_ORDER.pop(0), None)
+
+
+def parse_bytes(img_bytes: bytes, max_dim: int, crop: str | None) -> dict:
+    key = hashlib.sha1(img_bytes).hexdigest() + f":{max_dim}:{crop or ''}"
+    hit = cache_get(key)
+    if hit is not None:
+        return hit
     img = cv2.imdecode(np.frombuffer(img_bytes, dtype=np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise ValueError("cannot decode image bytes")
+    ox, oy = 0, 0
+    if crop:
+        try:
+            cx, cy, cw, ch = (int(v) for v in crop.split(","))
+            img = img[cy:cy + ch, cx:cx + cw]
+            ox, oy = cx, cy
+        except (ValueError, TypeError):
+            raise ValueError("crop 参数格式应为 x,y,w,h（原图像素空间）")
     h, w = img.shape[:2]
     # 每请求 max_dim：长边超限则先缩放再解析；bbox_norm 是 [0,1000] 空间无关真值，
-    # 像素坐标始终按原图 (w,h) 还原——调用方拿到的坐标与它发的截图同空间（cua click 空间）
+    # 像素坐标按 (w,h)+偏移 还原——调用方拿到的坐标与它发的截图同空间（cua click 空间）
     small = img
     long_side = max(w, h)
     if max_dim > 0 and long_side > max_dim:
@@ -64,10 +96,14 @@ def parse_bytes(img_bytes: bytes, max_dim: int) -> dict:
             "text": item.get("text") or item.get("label", ""),
             "bbox_norm": [x1, y1, x2, y2],
             "center_norm": [cx, cy],
-            "bbox_px": [round(x1 / 1000 * w), round(y1 / 1000 * h), round(x2 / 1000 * w), round(y2 / 1000 * h)],
-            "center_px": [round(cx / 1000 * w), round(cy / 1000 * h)],
+            "bbox_px": [round(x1 / 1000 * w) + ox, round(y1 / 1000 * h) + oy,
+                        round(x2 / 1000 * w) + ox, round(y2 / 1000 * h) + oy],
+            "center_px": [round(cx / 1000 * w) + ox, round(cy / 1000 * h) + oy],
         })
-    return {"image": {"width": w, "height": h, "max_dim": max_dim}, "parse_ms": round(dt), "elements": elements}
+    result = {"image": {"width": w, "height": h, "offset": [ox, oy], "max_dim": max_dim},
+              "parse_ms": round(dt), "elements": elements}
+    cache_put(key, result)
+    return result
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -96,7 +132,8 @@ class Handler(BaseHTTPRequestHandler):
             img_bytes = self.rfile.read(n)
             q = parse_qs(u.query)
             max_dim = int(q.get("max_dim", [STATE["default_max_dim"]])[0])
-            self._send(200, parse_bytes(img_bytes, max_dim))
+            crop = q.get("crop", [None])[0]
+            self._send(200, parse_bytes(img_bytes, max_dim, crop))
         except Exception as e:  # noqa: BLE001
             self._send(400, {"error": str(e)})
 
