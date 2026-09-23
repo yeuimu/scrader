@@ -54,6 +54,7 @@ function gazeParse(pngBuf, port, maxDim) {
 
   const actions = [];
   const history = [];
+  let pendingShot = null; // 上一轮动作后的稳定帧（感知预取），下一轮直接消费
   let prevCands = null;      // 上一步文本候选（做 page_diff 证据）
   let lastChoice = null;     // 上一步选择（防重复）
   let repeatCount = 0;
@@ -64,8 +65,10 @@ function gazeParse(pngBuf, port, maxDim) {
   await c.init();
   try {
     for (let step = 1; step <= maxSteps; step++) {
-      // 1) 感知（MCP 通道截图在 content image 项里，不在 structuredContent）
-      const r = await c.call('get_window_state', { pid: win.pid, window_id: win.window_id, include_screenshot: true, max_elements: 1 });
+      const stepT0 = Date.now();
+      // 1) 感知（优先消费上轮动作后的稳定帧；首轮现拍。MCP 通道截图在 content image 项里）
+      const r = pendingShot || await c.call('get_window_state', { pid: win.pid, window_id: win.window_id, include_screenshot: true, max_elements: 1 });
+      pendingShot = null;
       const st = c.parse(r);
       const imgItem = (r.content || []).find((x) => x.type === 'image');
       if (!imgItem || !imgItem.data) throw new Error('get_window_state 未返回截图');
@@ -73,7 +76,8 @@ function gazeParse(pngBuf, port, maxDim) {
       const g = await gazeParse(png, port, maxDim);
       parseMsTotal += g.parse_ms;
       const cands = g.elements.filter((e) => e.kind === 'text' && e.center_px[1] >= 100 && (e.text || '').trim().length > 1).slice(0, 80);
-      console.log(`\n[step ${step}] 感知 ${g.parse_ms}ms，文本候选 ${cands.length} 个`);
+      const icons = g.elements.filter((e) => e.kind === 'icon' && e.center_px[1] >= 100).slice(0, 12);
+      console.log(`\n[step ${step}] 感知 ${g.parse_ms}ms，文本候选 ${cands.length} 个，图标候选 ${icons.length} 个`);
 
       // 动作效果证据：与上一步感知做文本集合 diff（出现/消失）
       let pageDiff = null;
@@ -94,6 +98,9 @@ function gazeParse(pngBuf, port, maxDim) {
         criteria['click_' + e.id] = `点击 "${(e.text || '').slice(0, 24)}" @(${e.center_px})`;
         if (typeText) criteria['type_' + e.id] = `点击后输入 "${typeText}"`;
       }
+      for (const e of icons) {
+        if (!criteria['click_' + e.id]) criteria['click_' + e.id] = `点击图标(无文字的图形按钮) @(${e.center_px})`;
+      }
       criteria.enter = '按回车提交';
       criteria.scroll = '向下滚动半屏（目标可能在折叠区下方）';
       criteria.goal_done = '目标已达成';
@@ -106,7 +113,10 @@ function gazeParse(pngBuf, port, maxDim) {
         state: {
           task: goal, history, page_diff: pageDiff,
           screenshot_size: [g.image.width, g.image.height],
-          candidates: cands.map((e) => ({ id: e.id, text: (e.text || '').slice(0, 24), center_px: e.center_px })),
+          candidates: [
+            ...cands.map((e) => ({ id: e.id, text: (e.text || '').slice(0, 24), center_px: e.center_px })),
+            ...icons.map((e) => ({ id: e.id, text: '〔图标〕', center_px: e.center_px })),
+          ],
         },
         questions: { next: { type: 'choice', criteria, instructions: `当前任务：${goal}。历史动作 ${history.length ? JSON.stringify(history) : '（无，第一步）'}。page_diff 是上一动作引起的页面文本变化（新增/消失），可作为该动作是否生效的证据。${repeatWarn}${typeHint}点击后新出现的弹层/菜单项也会出现在候选里。目标已完成选 goal_done，无法推进选 stuck。` } },
       });
@@ -115,26 +125,22 @@ function gazeParse(pngBuf, port, maxDim) {
       let mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
       let elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
       console.log(`[step ${step}] 决策 ${d.provider} → ${ans.choice}${elLog ? '("' + (elLog.text || '').slice(0, 20) + '")' : ''} (conf=${ans.confidence})`);
-      if (ans.choice === 'goal_done') { console.log('✅ goal_done'); result = 'goal_done'; break; }
-      if (ans.choice === 'stuck') { console.log('⛔ stuck'); result = 'stuck'; break; }
 
-      // 2.5) 两级决策脑：动作置信度不足时，把完整决策上下文写给上级（调用方主模型），轮询裁决文件
-      if ((ans.confidence ?? 0) < minConf && /^(click|type)_|enter|scroll$/.test(ans.choice)) {
-        if (!escalate) {
-          console.log(`⛔ 动作置信度 ${ans.confidence} < ${minConf}，拒绝盲动（--escalate 可启用上级裁决）`);
-          result = 'low_confidence';
-          break;
-        }
+      // 2.4) 两级决策脑（升级裁决）：写 ask.json → 轮询 answer.json → 返回上级选择的 choice 或 null
+      const askSuperior = async (note) => {
         fs.rmSync(ANS_FILE, { force: true });
         const ask = {
-          goal, step, history, page_diff: pageDiff, type_text: typeText || null,
+          goal, step, history, page_diff: pageDiff, type_text: typeText || null, note: note || null,
           jev_answer: { choice: ans.choice, confidence: ans.confidence },
-          candidates: cands.map((e) => ({ id: e.id, text: (e.text || '').slice(0, 30), center_px: e.center_px })),
+          candidates: [
+            ...cands.map((e) => ({ id: e.id, text: (e.text || '').slice(0, 30), center_px: e.center_px })),
+            ...icons.map((e) => ({ id: e.id, text: '〔图标〕', center_px: e.center_px })),
+          ],
           allowed: Object.keys(criteria), how: '写 ' + ANS_FILE + '：{"choice":"<allowed之一>"}',
         };
         fs.mkdirSync(ESC_DIR, { recursive: true });
         fs.writeFileSync(ASK_FILE, JSON.stringify(ask, null, 1));
-        console.log(`[step ${step}] ⏳ 置信度 ${ans.confidence} < ${minConf}，等待上级裁决: ${ASK_FILE}（≤${escTimeout}s）`);
+        console.log(`[step ${step}] ⏳ 等待上级裁决: ${ASK_FILE}（≤${escTimeout}s）`);
         let answer = null;
         const deadline = Date.now() + escTimeout * 1000;
         while (Date.now() < deadline) {
@@ -146,11 +152,38 @@ function gazeParse(pngBuf, port, maxDim) {
           }
         }
         fs.rmSync(ASK_FILE, { force: true });
-        if (!answer || !answer.choice || !ask.allowed.includes(answer.choice)) {
-          console.log('⛔ 上级裁决超时或无效'); result = 'low_confidence'; break;
+        if (!answer || !answer.choice || !ask.allowed.includes(answer.choice)) return null;
+        return answer.choice;
+      };
+
+      if (ans.choice === 'goal_done') {
+        // goal_done 证据闸：最后动作页面零变化时，"完成"声明不可信 → 升级请上级确认
+        const noEvidence = history.length > 0 && pageDiff && (pageDiff.appeared.length + pageDiff.disappeared.length) === 0;
+        if (!noEvidence || !escalate) {
+          if (noEvidence) console.log('⚠ goal_done 缺少页面变化证据（未启用 --escalate，姑且采信）');
+          console.log('✅ goal_done'); result = 'goal_done'; break;
         }
-        console.log(`[step ${step}] 上级裁决 → ${answer.choice}`);
-        ans = { choice: answer.choice, confidence: answer.confidence ?? 1 };
+        console.log('⚠ jev 声称 goal_done 但最后动作无页面变化，升级请上级确认');
+        const confirmed = await askSuperior('jev 声称 goal_done，但最后动作没有引起任何页面文本变化；若目标确实达成请仍答 goal_done，否则改选正确动作');
+        if (confirmed === 'goal_done') { console.log('✅ goal_done（上级确认）'); result = 'goal_done'; break; }
+        if (confirmed === null) { console.log('⛔ 上级未确认 goal_done'); result = 'low_confidence'; break; }
+        ans = { choice: confirmed, confidence: 1 };
+        mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
+        elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
+      }
+      if (ans.choice === 'stuck') { console.log('⛔ stuck'); result = 'stuck'; break; }
+
+      // 2.5) 两级决策脑：动作置信度不足时，交给上级裁决
+      if ((ans.confidence ?? 0) < minConf && /^(click|type)_|enter|scroll$/.test(ans.choice)) {
+        if (!escalate) {
+          console.log(`⛔ 动作置信度 ${ans.confidence} < ${minConf}，拒绝盲动（--escalate 可启用上级裁决）`);
+          result = 'low_confidence';
+          break;
+        }
+        const answer = await askSuperior();
+        if (!answer) { console.log('⛔ 上级裁决超时或无效'); result = 'low_confidence'; break; }
+        console.log(`[step ${step}] 上级裁决 → ${answer}`);
+        ans = { choice: answer, confidence: 1 };
         mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
         elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
       }
@@ -196,7 +229,21 @@ function gazeParse(pngBuf, port, maxDim) {
       }
       history.push(elLog ? `${ans.choice}("${(elLog.text || '').slice(0, 16)}")` : ans.choice);
       actions.push(ans.choice);
-      await sleep(2500); // 等页面响应后重感知
+      // 感知预取：页面稳定检测（PNG 尺寸连续两帧近同即稳定，光标闪烁级抖动忽略），稳定帧供下轮感知
+      pendingShot = null;
+      let prevLen = null, stable = 0;
+      for (let i = 0; i < 5 && Date.now() - stepT0 < 6000; i++) {
+        await sleep(650);
+        try {
+          const rr = await c.call('get_window_state', { pid: win.pid, window_id: win.window_id, include_screenshot: true, max_elements: 1 });
+          const img = (rr.content || []).find((x) => x.type === 'image');
+          if (!img || !img.data) continue;
+          pendingShot = rr;
+          const len = img.data.length;
+          if (prevLen !== null && Math.abs(len - prevLen) < 150) { if (++stable >= 1) break; } else { stable = 0; }
+          prevLen = len;
+        } catch {}
+      }
     }
   } finally {
     await c.end();

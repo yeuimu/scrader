@@ -56,9 +56,9 @@ Agent ⇄ core/index.js (MCP stdio)
 
 决策端 `decide`：jev 通道按 `jevOrder` 过滤有 key 者依次尝试（网络抖动退避重试），LLM 兜底仅在配置了 apiKey 时参与，无 key 明确跳过不报 401。
 
-动作端 `eyes/vision_loop.js`：自主循环（截图→gaze_server 感知→jev 决策 next 动作→humanGlide+前台点击/逐字符键入→重感知），history 注入防重复，直到 goal_done/stuck/max-steps。实测：两步弹层目标（点开下拉→选默认排序）全自主完成；本地固定装置 `fixtures/vision_test_page.html` 上"替换输入框内容"目标经两级决策完成。已知边界：jev 对"可见标签与目标措辞的字面匹配"依赖较强（搜索框里的 `sort:` 语法文本会抢匹配）；决策质量是闭环上限，震荡由 max-steps 兜底。
+动作端 `eyes/vision_loop.js`：自主循环（截图→gaze_server 感知→jev 决策 next 动作→humanGlide+前台点击/逐字符键入→重感知），history 注入防重复，直到 goal_done/stuck/max-steps。动作后用页面稳定检测（PNG 尺寸连续两帧近同）预取稳定帧供下轮感知，代替固定等待。候选含文本+图标（无文字图形按钮以〔图标〕@坐标 进决策）。实测：两步弹层目标、图标按钮点击均全自主完成。已知边界：jev 对"可见标签与目标措辞的字面匹配"依赖较强（搜索框里的 `sort:` 语法文本会抢匹配）；决策质量是闭环上限，震荡由 max-steps 兜底。
 
-两级决策脑（`--escalate`）：动作置信度 < min-conf(默认0.6) 时不盲动，把完整决策上下文写入 `.vision-escalate/ask.json` 轮询等待调用方裁决（写 answer.json 的 {"choice":...}），模糊目标由更聪明的决策者接管。注意：杀后台循环要连 node 子进程一起杀（TaskStop 只杀 bash，孤儿 node 会继续抢答文件）。共用一台机器时的纪律：感知-决策-动作的目标窗口必须专用（`--title` 精确匹配 + 独立窗口/file:// 固定装置），绝不对用户正在使用的窗口做前台动作。
+两级决策脑（`--escalate`）：动作置信度 < min-conf(默认0.6) 时不盲动，把完整决策上下文（含图标候选）写入 `.vision-escalate/ask.json` 轮询等待调用方裁决（写 answer.json 的 {"choice":...}），模糊目标由更聪明的决策者接管。goal_done 证据闸：jev 声称完成但最后动作页面零变化时，强制升级请上级确认，防伪完成。注意：杀后台循环要连 node 子进程一起杀（TaskStop 只杀 bash，孤儿 node 会继续抢答文件）。共用一台机器时的纪律：感知-决策-动作的目标窗口必须专用（`--title` 精确匹配 + 独立窗口/file:// 固定装置），绝不对用户正在使用的窗口做前台动作；标题歧义会让循环盯错窗口，"页面自己变了"多半是自己此前的盲动作+盯错窗口的叠加假象。
 
 键盘铁律（cua 通道实测）：特殊键名必须大写（`BACKSPACE`），小写被静默丢弃；hotkey 组合键（`ctrl+a`）实测是哑弹——替换类输入用「END + 连发 BACKSPACE」代替全选删除。
 
