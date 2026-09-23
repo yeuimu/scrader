@@ -1,0 +1,20 @@
+{
+  "cards": {
+    "selector": "a[href*='-g-']",
+    "id_from_href": "-g-([0-9]+)[.]html",
+    "open": "new_tab"
+  },
+  "sections": {
+    "reviews": {
+      "patterns": ["[0-9]+[ ]*条评价", "评价[（(]", "评论[（(]", "查看全部评价", "查看更多评价"],
+      "images_band": { "below": 2600, "size": [55, 420] }
+    }
+  },
+  "scroll": {
+    "mode": "lazy_read",
+    "stall_px": 150,
+    "chunk_px": [1700, 2600],
+    "quirk": "底部连滚滚轮会触发列表重置；长距离移动用程序化 scrollTo 瞬跳"
+  },
+  "notes": "商品卡 target=_blank；离屏元素 innerText 为空须用 textContent；搜索提交须 isTrusted（fill/受信 Enter）或 form.requestSubmit"
+}

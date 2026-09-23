@@ -77,3 +77,22 @@ Agent ⇄ core/index.js (MCP stdio)
 2. 对话框宿主 pid 每次都变 → `find_window({title})` 按标题跨进程枚举（PowerShell EnumWindows；cua-driver 的 window_id 即 Win32 hwnd，可直接续用）
 3. 键盘类注入（type_text/press_key/hotkey）可能被 Windows 前台锁吞 → adapter 自动先 bring_to_front（args.auto_front=false 关闭）
 4. 合成组合键可能泄漏裸键（ctrl+a 打出"a"）→ 永远以回读校验为准，不信"发送成功"
+
+## 意图动词层（hands/act/，v0.7.0）
+
+随机浏览器任务的成本公式：**首触未知数 × 探测周期 + 节奏成本**。act 层把前两项结构性压低——
+
+Agent 不再为每个任务现写一次性脚本，而是提交**计划**（意图动词序列），act 层负责：怎么定位（站点缓存→DOM 启发式→UIA）、带守卫执行（前台校验/坐标重测/视口边界/停滞熔断）、带回效果证据（新标签/URL 变化/标记入视口/浮层可见——未验证不宣称成功）。
+
+```
+node hands/act/act.js --plan plan.json --tab T --pid P --wid W [--exec]
+  不带 --exec = 纯演练（快介质：静态快照裁决，零输入事件零风控暴露）
+  带 --exec   = 闭环执行（慢介质：每步效果证据，失败即停不盲走）
+```
+
+- **动词**：`open_item`（开商品，自动学习 _blank/同页模式入库）· `read_scroll`（阅读式滚动）· `goto_section`（分段深滚找区块+停滞熔断）· `click_verified`（点击并验证效果）· `press_key` · `close_tab` · `wait`
+- **站点能力缓存**（知识放动作层，不放散文）：仓库种子 `hands/act/seeds/<host>.json`（全站通用事实，随发行）← 用户层 `<配置目录>/sites/<host>.json`（本机学习覆盖）。首触：演练指出缺口 → 一次探察 → `site_cache.save()` 入库 → 复跑即通（实测未见站点 6 步 19 秒）
+- **演练（rehearse.checkPlan）**是纯函数：快照+计划+缓存静态裁决，可离线单测；导航后步骤标 `lazy`（执行时对真实表面现测）
+- 实测基准（2026-09-24）：Temu 全链路 6/6 步 39 秒；本地未见站点（零知识起步）学习回路 19 秒跑通
+
+已知边界：演练快照取自起始页，`open_item` 之后的步骤属跨表面步骤，静态裁决是建议性的（lazy 标记），最终以执行时的现场定位为准——这与"未验证不宣称成功"原则一致。

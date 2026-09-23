@@ -17,6 +17,7 @@ description: 通用浏览器/桌面自动化控制器（MCP）。当用户要求
 | 桌面原生应用（计算器/客户端/安装器） | `desktop`（cua-driver 代理） | 浏览器页面仍用 scrader 本体；element_token 优先于坐标 |
 | 视觉定位（canvas/游戏/无 DOM 表面） | gaze：截图 → YOLO+OCR → 元素列表（`eyes/gaze/gaze.py`） | 坐标语义裁决：UIA label > VLM > OCR |
 | 拟人滑行/点击（真实指针） | `hands/cua/glide.js`（消费 motion timeline） | 用于强风控关键动作 |
+| **随机浏览任务**（逛详情/看评论/点图等意图流） | `hands/act/act.js` 意图动词层：先演练后执行，站点知识自动学习 | 计划=意图动词序列；零知识站点先演练看缺口→探察→入库→复跑 |
 | 数据导出 Excel | 用户目录 recipes/ 配方（如 recipes/temu/export_temu_xlsx.py） | 配方属场景，不在本仓库 |
 
 ## 新机器安装（国内网络优先，Gitee Release，无需 clone）
