@@ -1,7 +1,7 @@
 // hands/cua/adapter.js — cua-driver CLI 门面（desktop 工具实现）：UIA 读 + 真实输入
-// 需本机另装 cua-driver（Windows PowerShell：irm https://cua.ai/driver/install.ps1 | iex，
-// 再 cua-driver autostart kick）。未安装时给出指引；不影响 scrader 其余工具。
-// 浏览器操作仍走扩展本体，这里只补桌面原生应用。
+// 需本机另装 cua-driver。国内（推荐）：仓库 scripts/cn-setup.ps1（Gitee Release 镜像）；
+// 海外官方（Windows PowerShell）：irm https://cua.ai/driver/install.ps1 | iex，再 cua-driver autostart kick。
+// 未安装时给出指引；不影响 scrader 其余工具。浏览器操作仍走扩展本体，这里只补桌面原生应用。
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -30,7 +30,7 @@ function resolveCuaDriver() {
 
 async function runCuaCall(method, argsObj) {
   const cu = resolveCuaDriver();
-  if (!cu) throw new Error('cua-driver 未安装 —— 桌面子系统未启用。安装（Windows PowerShell）：irm https://cua.ai/driver/install.ps1 | iex，然后 cua-driver autostart kick；详见 https://cua.ai/docs/tutorials/drive-your-first-app');
+  if (!cu) throw new Error('cua-driver 未安装 —— 桌面子系统未启用。国内安装：powershell -ExecutionPolicy Bypass -File scripts/cn-setup.ps1（Gitee 镜像）；海外官方：irm https://cua.ai/driver/install.ps1 | iex，然后 cua-driver autostart kick');
   const { stdout, stderr } = await execFileP(cu.cmd, ['call', method, JSON.stringify(argsObj || {})], { timeout: 120000, windowsHide: true, maxBuffer: 64 * 1024 * 1024 });
   return ((stdout || '') + (stdout ? '' : (stderr || ''))).trim();
 }

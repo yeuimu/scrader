@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "scrader",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "scrader (spider + scraper) — 把浏览器操作/网页抓取能力通过本地 MCP 桥暴露给任意 AI Agent，可选 Jev 快速决策",
   "icons": {
     "16": "icons/icon16.png",

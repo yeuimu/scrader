@@ -34,6 +34,11 @@ Agent (MCP stdio) ── core/index.js ── HTTP 127.0.0.1:7827 ── bridge.
 
 ## 安装
 
+0. **国内网络一键**（推荐；缺什么补什么，Node / Python 依赖 / cua-driver 全走国内源）——
+   ```
+   irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
+   ```
+   演练加 `-DryRun`（仓库内：`powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1 -DryRun`）。
 1. **扩展** —— `chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」→ 选 `hands/browser/extension/`
 2. **MCP 服务器** —— 任意 MCP 客户端配置加一条：
    ```json
@@ -48,7 +53,7 @@ Agent (MCP stdio) ── core/index.js ── HTTP 127.0.0.1:7827 ── bridge.
      }
    }
    ```
-   免克隆方式——`npx -y github:yeuimu/scrader`（Windows 客户端用 `cmd /c npx ...` 包装）。
+   免克隆方式——国内 `npx -y git+https://gitee.com/yeuimu/scrader.git`（海外 `npx -y github:yeuimu/scrader`；Windows 客户端用 `cmd /c npx ...` 包装）。
 3. **决策 Key**（可选，仅 `decide` 需要）—— 把 `core/providers.example.json` 复制为：
    - Windows：`%APPDATA%\scrader_mcp\config.json`
    - macOS / Linux：`~/.config/scrader_mcp/config.json`
@@ -83,7 +88,7 @@ harvest({
 
 ## 桌面应用（可选）
 
-`desktop` 代理本机 [cua-driver](https://github.com/trycua/cua) 守护进程（`cua-driver call <method> <json>`），补上原生桌面应用自动化——UIA 元素级点击，后台执行不抢焦点。内置智能方法：`find_window({title})` 按标题跨进程找窗口（对话框宿主 pid 每次都变，别只查已知 pid）；`set_text({pid,window_id,element_token,value})` 原生控件写文本（UIA set_value → 键盘兜底，反斜杠安全，自动回读校验）；键盘类方法自动先 bring_to_front 兜前台锁。安装（PowerShell）：`irm https://cua.ai/driver/install.ps1 | iex; cua-driver autostart kick`，装好即点亮；不装则优雅报错，不影响其他工具。浏览器页面操作仍走 scrader 本体的 DOM 级工具。
+`desktop` 代理本机 [cua-driver](https://github.com/trycua/cua) 守护进程（`cua-driver call <method> <json>`），补上原生桌面应用自动化——UIA 元素级点击，后台执行不抢焦点。内置智能方法：`find_window({title})` 按标题跨进程找窗口（对话框宿主 pid 每次都变，别只查已知 pid）；`set_text({pid,window_id,element_token,value})` 原生控件写文本（UIA set_value → 键盘兜底，反斜杠安全，自动回读校验）；键盘类方法自动先 bring_to_front 兜前台锁。安装（PowerShell，国内镜像优先）：仓库内 `powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1`（cua-driver 走 Gitee Release 镜像，官方 cua.ai 安装包的 MIT 原样转存）；或官方渠道（海外）`$env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex; cua-driver autostart kick`，装好即点亮；不装则优雅报错，不影响其他工具。浏览器页面操作仍走 scrader 本体的 DOM 级工具。
 
 ## 安全
 
@@ -103,21 +108,26 @@ MIT
 > 把下面的提示词发给任何支持 MCP 的 Agent，它会完成安装配置并自检。使用决策树与实战铁律见 `skills/scrader/SKILL.md`（复制到 Agent 的 skills 目录可自动触发）。
 
 ```text
-请在本机安装并配置 scrader（通用浏览器/桌面控制器）：
-1) 打开 https://github.com/yeuimu/scrader/releases 页面，下载三个包：
+请在本机安装并配置 scrader（通用浏览器/桌面控制器；全部走国内源，不依赖 GitHub）：
+0) 一键检测（国内网络，缺什么装什么：Node→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像）：
+   irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
+   （无 uv 时自动改用 venv+清华 pip，不强装 uv；无 npm 时 Node 从 npmmirror 装到用户目录）
+1) 打开 https://gitee.com/yeuimu/scrader/releases 页面，下载三个包（海外备选 github.com/yeuimu/scrader/releases）：
    - scrader-extension-<版本>.zip（浏览器扩展）
    - gaze-weights-<版本>.zip（视觉感知权重）
-   - Source code (zip)（服务端源码，解压到固定目录，需 Node ≥ 18）
-   （若 Release 页暂无扩展/权重附件：直接用 Source code 包——内含扩展源码 hands/browser/extension/ 可直接加载、eyes/gaze/weights/ 已内置 YOLO+OCR 全部权重）
+   - cua-driver-mirror-0.28.2-win-x64.zip（桌面驱动国内镜像，cn-setup 已含可跳过）
+   （若 Release 页暂无扩展/权重附件：直接用源码包——内含扩展源码 hands/browser/extension/ 可直接加载、eyes/gaze/weights/ 已内置 YOLO+OCR 全部权重）
 2) 扩展安装：chrome://extensions → 开发者模式 → 「加载已解压的扩展程序」→ 选扩展解压目录；
 3) MCP 配置：在宿主的 MCP 配置里添加 server——command=node，args=["<源码目录>/core/index.js"]——然后重载 MCP；
 4) decide 快速决策（可选）：询问我是否有 TypeSafe Jev 的 API Key；有则把 <源码目录>/core/providers.example.json
    复制为用户配置目录（Windows: %APPDATA%/scrader_mcp/，其余: ~/.config/scrader_mcp/）下的 config.json 并填入 Key；
-5) cua-driver 桌面自动化（需要安装）：PowerShell 执行
-   $env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex
-   然后 cua-driver autostart kick；
+   llm 兜底支持任意 OpenAI 兼容端点，国内可填 DeepSeek/GLM 的 baseUrl+apiKey；
+5) cua-driver 桌面自动化（需要安装，二选一）：
+   国内镜像（推荐）：powershell -ExecutionPolicy Bypass -File <源码目录>/scripts/cn-setup.ps1
+   官方渠道（海外）：$env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex; cua-driver autostart kick
 6) 感知权重：把 gaze-weights-<版本>.zip 解压到 <源码目录>/eyes/gaze/weights/（YOLO 图标检测 + OCR 识别权重）；
-   Python 侧依赖：uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python <源码目录>/eyes/gaze/gaze.py --help 自检；
+   Python 侧依赖：有 uv 用 uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python <源码目录>/eyes/gaze/gaze.py --help 自检
+   （建议先设 UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple；无 uv：<源码目录>/eyes/gaze/.venv/Scripts/python.exe gaze.py --help，cn-setup 会自动建）；
 7) 验证：scrader 的 status 工具显示扩展已连接；read_page 任一打开的页面全链路通；desktop 调 list_apps 确认 cua 正常。
 逐项执行；需要我确认的操作（扩展加载、填 Key）再问我。完成后按 skills/scrader/SKILL.md 的决策树与铁律使用。
 ```

@@ -1,6 +1,6 @@
 {
   "name": "scrader-mcp",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "scrader (spider + scraper) — browser operations & web scraping exposed as MCP tools for any AI Agent: trusted humanized input, generic list harvesting (harvest), optional Jev fast decisions",
   "license": "MIT",
   "bin": {

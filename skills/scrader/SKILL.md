@@ -19,20 +19,24 @@ description: 通用浏览器/桌面自动化控制器（MCP）。当用户要求
 | 拟人滑行/点击（真实指针） | `hands/cua/glide.js`（消费 motion timeline） | 用于强风控关键动作 |
 | 数据导出 Excel | 用户目录 recipes/ 配方（如 recipes/temu/export_temu_xlsx.py） | 配方属场景，不在本仓库 |
 
-## 新机器安装（全部来自 GitHub Release，无需 clone）
+## 新机器安装（国内网络优先，Gitee Release，无需 clone）
 
-打开 https://github.com/yeuimu/scrader/releases 下载：扩展 zip、gaze-weights zip、Source code。
+一键检测安装（缺什么补什么：Node→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像）：
+`irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex`（演练加 `-DryRun`）
+分包装下载：https://gitee.com/yeuimu/scrader/releases （扩展 zip、gaze-weights zip、cua-driver 镜像 zip、源码包；海外备选 github.com/yeuimu/scrader/releases）。
 
-**1. 浏览器面（必装）**：解压扩展 zip → `chrome://extensions` → 开发者模式 → 加载已解压；服务端源码解压后，在宿主 MCP 配置添加：`command=node, args=["<源码目录>/core/index.js"]`。
+**1. 浏览器面（必装）**：解压扩展 zip → `chrome://extensions` → 开发者模式 → 加载已解压；服务端源码解压后，在宿主 MCP 配置添加：`command=node, args=["<源码目录>/core/index.js"]`（免克隆：`npx -y git+https://gitee.com/yeuimu/scrader.git`）。
 
-**2. cua-driver 桌面面（必装，Windows）**：```powershell
+**2. cua-driver 桌面面（必装，Windows）**——二选一：
+国内镜像（推荐）：`powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1`（Gitee Release 镜像，官方 cua.ai 安装包的 MIT 原样转存）
+官方渠道（海外）：```powershell
 $env:CUA_DRIVER_RS_VERSION = "0.28.2"; irm https://cua.ai/driver/install.ps1 | iex
 cua-driver autostart kick
 ```
 
-**3. decide 决策（可选）**：询问用户是否有 TypeSafe Jev Key；有则 `core/providers.example.json` → 用户配置目录 `config.json`（Windows `%APPDATA%scrader_mcp`，其余 `~/.config/scrader_mcp/`）填入，或用环境变量。
+**3. decide 决策（可选）**：询问用户是否有 TypeSafe Jev Key；有则 `core/providers.example.json` → 用户配置目录 `config.json`（Windows `%APPDATA%scrader_mcp`，其余 `~/.config/scrader_mcp/`）填入，或用环境变量；llm 兜底支持任意 OpenAI 兼容端点（国内可填 DeepSeek/GLM）。
 
-**4. gaze 视觉感知**：gaze-weights zip 解压到 `eyes/gaze/weights/`（YOLO 图标检测 + OCR 识别权重）；Python 依赖：`uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python eyes/gaze/gaze.py <截图.png>`
+**4. gaze 视觉感知**：gaze-weights zip 解压到 `eyes/gaze/weights/`（YOLO 图标检测 + OCR 识别权重）；Python 依赖：有 uv 则先设 `UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple` 再 `uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python eyes/gaze/gaze.py <截图.png>`；无 uv 用 cn-setup 建的 `eyes/gaze/.venv/Scripts/python.exe`（venv+清华 pip，不强装 uv）。
 
 **验证**：调 scrader 的 `status` 工具（扩展已连接）→ `read_page` 任一页面 → 全链路通。
 

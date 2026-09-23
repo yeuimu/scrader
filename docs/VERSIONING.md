@@ -19,7 +19,7 @@
 
 | 依赖 | 验证版本 | 验证日期 | 钉版方式 |
 |---|---|---|---|
-| cua-driver | 0.28.2 | 2026-09-22 | 安装: `$env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex`；回滚: `install.ps1 -Release <旧版>`（junction 切换） |
+| cua-driver | 0.28.2 | 2026-09-22 | 国内: `scripts/cn-setup.ps1`（Gitee Release 镜像 zip，官方包 MIT 原样转存）；海外: `$env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex`；回滚: `install.ps1 -Release <旧版>`（junction 切换） |
 
 升级流程：金丝雀机 update → npm run selftest + test/test-desktop-e2e.js + glide 冒烟 → 全绿后更新本表 → 其余机器钉装。
 

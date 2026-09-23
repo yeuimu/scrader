@@ -29,7 +29,7 @@ async function fetchRetry(url, headers, body, label, retries = 3) {
 async function jevCall(provider, c, a) {
   const headers = provider === 'typesafe'
     ? { Authorization: 'Bearer ' + c.apiKey }
-    : { Authorization: 'Bearer ' + c.apiKey, 'HTTP-Referer': 'https://github.com/chy4pro/scrader', 'X-Title': 'scrader' };
+    : { Authorization: 'Bearer ' + c.apiKey, 'HTTP-Referer': 'https://gitee.com/yeuimu/scrader', 'X-Title': 'scrader' };
   const j = await fetchRetry(c.endpoint, headers, { model: c.model, state: a.state || {}, questions: a.questions || {} }, 'jev/' + provider);
   return j.answers ? j : (j.result || j);
 }

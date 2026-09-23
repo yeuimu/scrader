@@ -26,7 +26,7 @@ async function main() {
     const c = cfg[p];
     const headers = p === 'typesafe'
       ? { Authorization: 'Bearer ' + c.apiKey }
-      : { Authorization: 'Bearer ' + c.apiKey, 'HTTP-Referer': 'https://github.com/chy4pro/scrader', 'X-Title': 'scrader' };
+      : { Authorization: 'Bearer ' + c.apiKey, 'HTTP-Referer': 'https://gitee.com/yeuimu/scrader', 'X-Title': 'scrader' };
     const body = {
       model: c.model || 'jev-latest',
       state: { task: 'scrader 连通性测试：什么都不用做', page: { url: 'https://example.com/', text: '' } },
