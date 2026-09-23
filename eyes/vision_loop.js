@@ -59,6 +59,7 @@ function gazeParse(pngBuf, port, maxDim) {
   let lastChoice = null;     // 上一步选择（防重复）
   let repeatCount = 0;
   let parseMsTotal = 0;
+  let degradedCount = 0;
   let result = 'max_steps';
 
   const c = createClient({ session: 'vision-loop', clientName: 'vision-loop' });
@@ -166,14 +167,14 @@ function gazeParse(pngBuf, port, maxDim) {
         console.log('⚠ jev 声称 goal_done 但最后动作无页面变化，升级请上级确认');
         const confirmed = await askSuperior('jev 声称 goal_done，但最后动作没有引起任何页面文本变化；若目标确实达成请仍答 goal_done，否则改选正确动作');
         if (confirmed === 'goal_done') { console.log('✅ goal_done（上级确认）'); result = 'goal_done'; break; }
-        if (confirmed === null) { console.log('⛔ 上级未确认 goal_done'); result = 'low_confidence'; break; }
+        if (confirmed === null) { console.log('⚠ 上级未确认，标记为未验证完成'); result = 'goal_done_unverified'; degradedCount++; break; }
         ans = { choice: confirmed, confidence: 1 };
         mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
         elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
       }
       if (ans.choice === 'stuck') { console.log('⛔ stuck'); result = 'stuck'; break; }
 
-      // 2.5) 两级决策脑：动作置信度不足时，交给上级裁决
+      // 2.5) 两级决策脑：动作置信度不足时，交给上级裁决；超时且 jev 原答案达硬底线(0.4)则降级执行
       if ((ans.confidence ?? 0) < minConf && /^(click|type)_|enter|scroll$/.test(ans.choice)) {
         if (!escalate) {
           console.log(`⛔ 动作置信度 ${ans.confidence} < ${minConf}，拒绝盲动（--escalate 可启用上级裁决）`);
@@ -181,11 +182,19 @@ function gazeParse(pngBuf, port, maxDim) {
           break;
         }
         const answer = await askSuperior();
-        if (!answer) { console.log('⛔ 上级裁决超时或无效'); result = 'low_confidence'; break; }
-        console.log(`[step ${step}] 上级裁决 → ${answer}`);
-        ans = { choice: answer, confidence: 1 };
-        mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
-        elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
+        if (!answer) {
+          if ((ans.confidence ?? 0) >= 0.4) {
+            console.log(`⚠ 裁决超时，降级执行 jev 原答案 ${ans.choice} (conf=${ans.confidence}，risk)`);
+            degradedCount++;
+          } else {
+            console.log('⛔ 上级裁决超时且 jev 原答案置信度过低'); result = 'low_confidence'; break;
+          }
+        } else {
+          console.log(`[step ${step}] 上级裁决 → ${answer}`);
+          ans = { choice: answer, confidence: 1 };
+          mLog = /^(click|type)_(\d+)$/.exec(ans.choice);
+          elLog = mLog && g.elements.find((e) => e.id === Number(mLog[2]));
+        }
       }
       if (ans.choice === lastChoice) {
         repeatCount++;
@@ -248,5 +257,5 @@ function gazeParse(pngBuf, port, maxDim) {
   } finally {
     await c.end();
   }
-  console.log(`\n==summary== ${JSON.stringify({ result, steps: history.length, actions: history, parse_ms_total: parseMsTotal, goal })}`);
+  console.log(`\n==summary== ${JSON.stringify({ result, steps: history.length, actions: history, degraded_actions: degradedCount, parse_ms_total: parseMsTotal, goal })}`);
 })().catch((e) => { console.error('ERR', e.message); process.exit(1); });
