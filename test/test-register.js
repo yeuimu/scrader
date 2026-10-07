@@ -51,10 +51,23 @@ const ok = (m) => { n++; console.log('  ✅ ' + m); };
   // zcode：只装技能不写 mcp
   const z = registerAgent('zcode', home, repo);
   assert.ok(z.ok && z.skill && /不盲写/.test(z.mcp) && !fs.existsSync(path.join(home, '.zcode', 'mcp.json')));
+  // claude：写 claude_desktop_config.json（{mcpServers} 同构）+ 技能装到 ~/.agents
+  fs.mkdirSync(path.join(home, 'AppData', 'Roaming', 'Claude'), { recursive: true });
+  fs.writeFileSync(path.join(home, 'AppData', 'Roaming', 'Claude', 'claude_desktop_config.json'), '{"globalShortcut":""}');
+  const c = registerAgent('claude', home, repo);
+  assert.ok(c.ok && /已写入/.test(c.mcp), 'claude 写入 mcp');
+  const cc = JSON.parse(fs.readFileSync(path.join(home, 'AppData', 'Roaming', 'Claude', 'claude_desktop_config.json'), 'utf8'));
+  assert.ok(cc.globalShortcut === '' && Array.isArray(cc.mcpServers.scrader.args), 'claude 保留原字段 + args 数组');
+  assert.ok(fs.existsSync(path.join(home, '.agents', 'skills', 'scrader', 'SKILL.md')), 'claude 技能落位');
+  // cursor：写 ~/.cursor/mcp.json，无技能目录约定
+  const cu = registerAgent('cursor', home, repo);
+  assert.ok(cu.ok && /已写入/.test(cu.mcp), 'cursor 写入 mcp');
+  const cj = JSON.parse(fs.readFileSync(path.join(home, '.cursor', 'mcp.json'), 'utf8'));
+  assert.ok(Array.isArray(cj.mcpServers.scrader.args), 'cursor args 数组');
   // 未知 agent 拒绝
   assert.ok(!registerAgent('nope', home, repo).ok);
   fs.rmSync(home, { recursive: true, force: true });
-  ok('registerAgent 全流程（合并/幂等/损坏兜底/zcode 只技能/未知拒绝）');
+  ok('registerAgent 全流程（合并/幂等/损坏兜底/zcode 只技能/claude+cursor/未知拒绝）');
 }
 
 console.log(`✅ register 注册器 ${n} 组断言全部通过`);

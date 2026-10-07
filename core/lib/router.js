@@ -36,7 +36,17 @@ function req(method, urlPath, body, timeoutMs = 120000) {
 }
 
 const bridgeStatus = () => req('GET', '/status', undefined, 3000);
-const callBridge = (tool, args, timeoutMs) => req('POST', '/tool', { tool, args, timeoutMs });
+const callBridge = (tool, args, timeoutMs) => req('POST', '/tool', { tool, args, timeoutMs }, timeoutMs + 5000);
+
+// 桥刚拉起时扩展需要几秒重连；轮询直到扩展在线（超时返回 false）
+async function waitForExtension(maxMs = 8000) {
+  const t0 = Date.now();
+  while (Date.now() - t0 < maxMs) {
+    try { const r = await bridgeStatus(); if (r.json && r.json.extensionConnected) return true; } catch {}
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  return false;
+}
 
 async function ensureBridge() {
   try { await bridgeStatus(); return true; } catch {}
@@ -60,10 +70,13 @@ async function handleCall(params) {
   const def = TOOLS_DEF.find((t) => t.name === name);
   if (!def) return { content: [{ type: 'text', text: '未知工具: ' + name }], isError: true };
 
-  // status：扩展状态 + bridge 多客户端清单（Chrome/Edge 可同时在线，按 UA 标记）
+  // status：扩展状态 + bridge 多客户端清单（Chrome/Edge 可同时在线，按 UA 标记）；桥死了顺手拉活
   if (name === 'status') {
     let clients = [];
-    try { const r = await bridgeStatus(); clients = ((r.json || {}).clients) || []; } catch {}
+    let sr = null;
+    try { sr = await bridgeStatus(); } catch {}
+    if (!sr) { try { if (await ensureBridge()) { await waitForExtension(); sr = await bridgeStatus(); } } catch {} }
+    if (sr) clients = ((sr.json || {}).clients) || [];
     let extStatus = null;
     try { const r2 = await callBridge('status', {}, 5000); extStatus = ((r2.json || {}).data) || null; } catch {}
     const out = Object.assign({ connected: false }, extStatus || {}, { bridge: { port: PORT, clients } });
@@ -115,6 +128,7 @@ async function handleCall(params) {
     }
     const ok = await ensureBridge();
     if (!ok) return { content: [{ type: 'text', text: '桥接不可达且自动拉起失败（检查端口 ' + PORT + ' / node 环境）' }], isError: true };
+    await waitForExtension(); // 扩展重连窗口，别急着重试
     try { r = await callBridge(name, args, timeoutMs); } catch (e2) {
       return { content: [{ type: 'text', text: '桥接不可达: ' + ((e2 && e2.message) || e2) }], isError: true };
     }

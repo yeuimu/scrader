@@ -25,7 +25,16 @@ function Have($c) { [bool](Get-Command $c -ErrorAction SilentlyContinue) }
 function Download($url, $dst) {
   if ($DryRun) { Info "[dry] 下载 $url"; return }
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-  Invoke-WebRequest -Uri $url -OutFile $dst -UseBasicParsing
+  # UA 必须含 curl/wget：Gitee 对浏览器类 UA 的 /repository/archive 请求返回"打包+验证码"HTML 页而非 zip（2026-10 实测）
+  Invoke-WebRequest -Uri $url -OutFile $dst -UseBasicParsing -UserAgent 'curl/8.6.0 scrader-bootstrap'
+  # zip 魔数校验：拿到 HTML 挑战页立即报可读错误，而不是让 Expand-Archive 炸出天书
+  if ((Test-Path $dst) -and ($dst -like '*.zip')) {
+    $fs = [IO.File]::OpenRead($dst)
+    $b = New-Object byte[] 2; [void]$fs.Read($b, 0, 2); $fs.Close()
+    if (($b[0] -ne 0x50) -or ($b[1] -ne 0x4B)) {
+      throw "下载内容不是 zip（Gitee 反爬页面？）。重试一次；仍失败请手动下载: $url"
+    }
+  }
 }
 function AddUserPath($dir) {
   $p = [Environment]::GetEnvironmentVariable('Path', 'User')

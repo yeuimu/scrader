@@ -39,6 +39,8 @@ Agent ⇄ core/index.js (MCP stdio)
           └─ desktop ──→ adapter/client → cua-driver → UIA/SendInput [cua 手]
 ```
 
+**bridge 多客户端（v0.7.6+）**：Chrome/Edge 可各装一份扩展同时在线——bridge 按 WS 升级请求的 UA 标记客户端（chrome/edge），调用按"最近活跃优先"路由，tab 不存在类错误自动转移到另一个浏览器；工具可显式传 `browser:"edge"` 定向。**自愈链（v0.7.7）**：桥进程意外死亡 → 任一工具调用按需拉起 → 轮询等扩展回连（约 2~3s）→ 重试原调用；status 同样会顺手拉活桥（实测杀桥到 list_tabs 恢复 2.3s）。
+
 ## 拟人轨迹（横切层）
 
 - 唯一源头：`motion/trajectory.js` 的 `buildTimeline(sx,sy,tx,ty)` → `[{x,y,tMs}]`
@@ -96,3 +98,15 @@ node hands/act/act.js --plan plan.json --tab T --pid P --wid W [--exec]
 - 实测基准（2026-09-24）：Temu 全链路 6/6 步 39 秒；本地未见站点（零知识起步）学习回路 19 秒跑通
 
 已知边界：演练快照取自起始页，`open_item` 之后的步骤属跨表面步骤，静态裁决是建议性的（lazy 标记），最终以执行时的现场定位为准——这与"未验证不宣称成功"原则一致。
+
+## 采集协议与反封锁（v0.7.1+）
+
+- `hands/act/collect.js` 一条命令把六步协议锁死在代码里：闸门（封锁冷却/日限）→ 封锁签名检查 → 温启（0 卡先种 cookie）→ 限额裁剪 → 站点配方滚采（`recipes/<site>/`）→ 验收（唯一 ID/三硬字段零缺失）+ 记账。agent 想跳步都不行。
+- `site_guard.js` 封锁签名分级（硬封锁=URL 特征/验证页；软信号=SW 离线墙先 curl 对照、先问代理再谈风控）；台账落用户配置目录 `sites/`。
+
+## 分发与安装链（v0.7.5+ 两阶段）
+
+1. **极简引导** `scripts/cn-setup.ps1`（人类一次，只装 Node≥18/技能/cua-driver；独立运行时从 Gitee 拉 82MB 源码包——UA 必须含 curl/wget，Gitee 对浏览器类 UA 返回打包验证页；zip 魔数校验防拿到 HTML）。技能装到 `~/.agents/skills/scrader/` 并写 `source-path.txt`（agent 定位源码用）。
+2. **agent 自主完成** `skills/scrader/references/install.md`：注册（`scripts/register.js` 表驱动，支持 pi/zcode/claude/cursor）→ 重连 → **cua 自动加载浏览器扩展**（chrome://extensions UIA 全流程实战验证）→ 全链路验证。
+- 安装知识随包分发（技能=安装/使用协议，seeds=站点事实，代码=守卫）——"换个 agent 就被封"的根因（知识不跟机器走）已结构性消除。
+- 运维工具：`scripts/preflight.js` 分发完整性自检（版本一致/关键文件/npm 包/三个入口 URL+PK 魔数，`--offline` 跳网络）；`scripts/uninstall.ps1` 一键卸载；`scripts/pmclick.ps1` Chromium 网页内容点击 PostMessage 兜底。

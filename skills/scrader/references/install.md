@@ -13,9 +13,10 @@
 ## 第 1 步：注册进本宿主
 
 ```
-node <源码>/scripts/register.js --agent pi        # pi：幂等写 mcp.json + 技能
-node <源码>/scripts/register.js --list            # 看支持列表
+node <源码>/scripts/register.js --agent pi         # pi：幂等写 mcp.json + 技能
+node <源码>/scripts/register.js --list             # 支持列表：pi / zcode / claude / cursor
 ```
+claude 写 `claude_desktop_config.json`、cursor 写 `~/.cursor/mcp.json`（格式同为 `{mcpServers}`，一条命令完事）。
 不在表里的宿主：按各自 MCP 配置格式手工加 `{"command":"node","args":["<源码>/core/index.js"]}`，技能拷到该宿主技能目录（SKILL.md 约定跨工具通用）。
 **完成后需重连**（重启会话/重载 MCP），工具以 `mcp__scrader__*` 出现。
 
