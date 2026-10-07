@@ -9,7 +9,7 @@ description: 通用浏览器/桌面自动化控制器（MCP）。当用户要求
 
 ## 一、安装（新机器 / 新 agent，全部 Gitee 优先，无 GitHub 依赖）
 
-**一键（推荐）**——缺什么走国内源补什么（Node≥18 检查→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像；检测到 pi 自动写 mcp.json+装技能、ZCode 装技能；结尾 node core/index.js --check 自检）：
+**一键（推荐）**——纯引导只管依赖与源码（Node≥18 检查→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像；结尾 node core/index.js --check 自检）：
 ```
 irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
 ```
@@ -24,7 +24,7 @@ irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
 
 **可选加重项**：cua-driver 桌面自动化（cn-setup 已含；海外 `irm https://cua.ai/driver/install.ps1 | iex`）；gaze 视觉感知（权重已在 git 里，clone 即得）；decide 密钥（`core/providers.example.json` → `%APPDATA%/scrader_mcp/config.json`，llm 兜底可填 DeepSeek/GLM）。
 
-**装进 pi 等其他 agent**：MCP 写 `~/.pi/agent/mcp.json`（同上 command/args）；技能目录拷 `skills/scrader/` → `~/.pi/agent/skills/scrader/`（SKILL.md 约定与 ZCode 通用）。装完重启会话，工具以 `mcp__scrader__*` 出现。
+**装进 pi 等其他 agent**：`node <源码>/scripts/register.js --agent pi`——表驱动注册器（幂等写 mcp.json + 装技能，`--list` 看支持列表；安装器 cn-setup 不含框架知识）。装完重启会话，工具以 `mcp__scrader__*` 出现。
 
 **首次验证**：`status` 显示扩展已连接 → `read_page` 任一页面 → `desktop` 调 `list_apps`（若装了 cua）。
 

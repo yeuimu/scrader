@@ -1,6 +1,6 @@
 {
   "name": "scrader-mcp",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "description": "scrader (spider + scraper) — browser operations & web scraping exposed as MCP tools for any AI Agent: trusted humanized input, generic list harvesting (harvest), optional Jev fast decisions",
   "license": "MIT",
   "bin": {
@@ -20,7 +20,7 @@
     "skills/"
   ],
   "scripts": {
-    "test": "node motion/trajectory.test.js && node test/test-cua-smart.js && node test/test-act.js && node scripts/build-extension.js --check",
+    "test": "node motion/trajectory.test.js && node test/test-cua-smart.js && node test/test-act.js && node test/test-register.js && node scripts/build-extension.js --check",
     "selftest": "node test/selftest.js",
     "build:extension": "node scripts/build-extension.js",
     "pack:extension": "node scripts/pack-extension.js"

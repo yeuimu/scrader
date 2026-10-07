@@ -34,11 +34,11 @@ The extension owns the browser; the bridge auto-spawns when needed.
 
 ## Install
 
-0. **China-network one-liner** (recommended for CN; detects and installs what's missing — Node (with >=18 version check) / Python deps / cua-driver — all from domestic mirrors; auto-registers MCP + installs the skill when pi/ZCode detected; ends with a self-check) —
+0. **China-network one-liner** (recommended for CN; pure bootstrap — deps & sources only: Node (>=18 check) / Python deps / cua-driver from domestic mirrors; ends with a self-check) —
    ```
    irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
    ```
-   Add `-DryRun` to rehearse (in-repo: `powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1 -DryRun`).
+   Add `-DryRun` to rehearse (in-repo: `powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1 -DryRun`). Then register into local agents: `node scripts/register.js --agent pi` (table-driven registrar; the installer stays framework-free).
 1. **Extension** — `chrome://extensions` → Developer mode → *Load unpacked* → select `hands/browser/extension/`
 2. **MCP server** — add to any MCP client config:
    ```json

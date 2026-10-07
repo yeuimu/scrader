@@ -34,11 +34,11 @@ Agent (MCP stdio) ── core/index.js ── HTTP 127.0.0.1:7827 ── bridge.
 
 ## 安装
 
-0. **国内网络一键**（推荐；缺什么补什么，Node / Python 依赖 / cua-driver 全走国内源）——
+0. **国内网络一键**（推荐；纯引导只管依赖与源码——Node≥18 检查 / Python 依赖 / cua-driver 全走国内源，结尾自动自检）——
    ```
    irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
    ```
-   演练加 `-DryRun`（仓库内：`powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1 -DryRun`）。
+   演练加 `-DryRun`（仓库内：`powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1 -DryRun`）。装完注册进本机 agent：`node scripts/register.js --agent pi`（表驱动注册器，安装器不含框架知识）。
 1. **扩展** —— `chrome://extensions` → 开发者模式 → 「加载已解压的扩展程序」→ 选 `hands/browser/extension/`
 2. **MCP 服务器** —— 任意 MCP 客户端配置加一条：
    ```json
