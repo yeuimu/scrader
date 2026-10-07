@@ -1,6 +1,6 @@
 {
   "name": "scrader-mcp",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "scrader (spider + scraper) — browser operations & web scraping exposed as MCP tools for any AI Agent: trusted humanized input, generic list harvesting (harvest), optional Jev fast decisions",
   "license": "MIT",
   "bin": {
@@ -8,22 +8,29 @@
   },
   "files": [
     "core/",
-    "hands/browser/bridge.js",
-    "hands/browser/harvest.js",
+    "hands/browser/",
     "hands/cua/",
+    "hands/act/",
+    "eyes/gaze/*.py",
+    "eyes/gaze/README*",
+    "eyes/vision_loop.js",
+    "motion/",
+    "docs/",
+    "recipes/",
+    "scripts/",
+    "skills/",
+    "test/",
     "README.md",
     "README.zh-CN.md",
-    "LICENSE",
-    "recipes/",
-    "hands/act/",
-    "scripts/",
-    "skills/"
+    "LICENSE"
   ],
   "scripts": {
-    "test": "node motion/trajectory.test.js && node test/test-cua-smart.js && node test/test-act.js && node test/test-register.js && node test/test-bridge.js && node scripts/build-extension.js --check",
+    "test": "node motion/trajectory.test.js && node test/test-cua-smart.js && node test/test-act.js && node test/test-register.js && node test/test-bridge.js && node test/selftest.js && node scripts/build-extension.js --check",
     "selftest": "node test/selftest.js",
     "build:extension": "node scripts/build-extension.js",
-    "pack:extension": "node scripts/pack-extension.js"
+    "pack:extension": "node scripts/pack-extension.js",
+    "test:desktop": "node test/test-desktop.js && node test/test-desktop-e2e.js",
+    "test:decide": "node test/test-decide.js"
   },
   "repository": {
     "type": "git",

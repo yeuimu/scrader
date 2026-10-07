@@ -14,7 +14,7 @@ param([switch]$DryRun, [switch]$SkipCua)
 
 $ErrorActionPreference = 'Stop'
 $GITEE_ARCHIVE = 'https://gitee.com/yeuimu/scrader/repository/archive/main.zip'
-$CUA_MIRROR    = 'https://gitee.com/yeuimu/scrader/releases/download/v0.6.1/cua-driver-mirror-0.28.2-win-x64.zip'
+$CUA_MIRROR    = 'https://gitee.com/yeuimu/scrader/releases/download/v0.6.2/cua-driver-mirror-0.28.2-win-x64.zip'
 $NODE_INDEX    = 'https://registry.npmmirror.com/-/binary/node/latest-v22.x/'
 $NODE_FALLBACK = 'https://registry.npmmirror.com/-/binary/node/v22.14.0/node-v22.14.0-win-x64.zip'
 
@@ -84,39 +84,52 @@ if (-not $nvOk) {
 }
 
 # ── 2) 技能安装（~/.agents/skills = 跨工具标准位，零框架知识）──────────
+# 注意：目标已存在时必须先删再拷——Copy-Item -Recurse 会拷进子目录造成
+# skills\scrader\scrader 嵌套、顶层 SKILL.md 永不更新（升级即失效）。
 $skillDir = Join-Path $env:USERPROFILE '.agents\skills\scrader'
 if ($DryRun) { Info "[dry] 技能 -> $skillDir" }
 else {
   New-Item -ItemType Directory -Force -Path (Split-Path $skillDir) | Out-Null
+  if (Test-Path $skillDir) { Remove-Item -Recurse -Force $skillDir }
   Copy-Item (Join-Path $Root 'skills\scrader') $skillDir -Recurse -Force
+  # 源码定位标记：agent 读技能目录即知 <源码> 在哪（终端输出它看不到）
+  [IO.File]::WriteAllText((Join-Path $skillDir 'source-path.txt'), $Root, (New-Object Text.UTF8Encoding $false))
   Ok "技能 -> $skillDir"
 }
 
 # ── 3) cua-driver（Gitee 镜像；装完 agent 即可操作电脑，进而自动装其余）──
+# 下载失败不终止安装（技能/源码已就位，cua 可事后补装——见失败提示）。
 if (-not $SkipCua) {
   $fb = Join-Path $env:LOCALAPPDATA 'Programs\Cua\cua-driver\bin\cua-driver.exe'
   if ((Have cua-driver) -or (Test-Path $fb)) { Ok 'cua-driver 已安装' }
   else {
-    $zip = Join-Path $env:TEMP 'cua-driver-mirror.zip'
-    Download $CUA_MIRROR $zip
-    if (-not $DryRun) {
-      $x = Join-Path $env:TEMP 'cua-mirror-x'
-      Remove-Item -Recurse -Force $x -ErrorAction SilentlyContinue
-      Expand-Archive $zip $x
-      $bin = Join-Path $env:LOCALAPPDATA 'Programs\Cua\cua-driver\bin'
-      New-Item -ItemType Directory -Force -Path $bin | Out-Null
-      Copy-Item "$x\*.exe" $bin -Force
-      $rel = Join-Path $env:USERPROFILE '.cua-driver\packages\releases\0.28.2-x86_64-pc-windows-msvc'
-      New-Item -ItemType Directory -Force -Path $rel | Out-Null
-      Copy-Item "$x\*.exe" $rel -Force
-      $cur = Join-Path $env:USERPROFILE '.cua-driver\packages\current'
-      if (Test-Path $cur) { cmd /c rmdir "$cur" }
-      New-Item -ItemType Junction -Path $cur -Target $rel | Out-Null
-      $cfg = Join-Path $env:USERPROFILE '.cua-driver\config.json'
-      if (-not (Test-Path $cfg)) { '{"telemetry_enabled":false}' | Set-Content $cfg }
-      AddUserPath $bin
-      & (Join-Path $bin 'cua-driver.exe') autostart kick | Out-Null
-      Ok "cua-driver -> $bin"
+    try {
+      $zip = Join-Path $env:TEMP 'cua-driver-mirror.zip'
+      Download $CUA_MIRROR $zip
+      if (-not $DryRun) {
+        if (-not (Test-Path $zip) -or ((Get-Item $zip).Length -lt 1MB)) { throw "镜像下载异常（$CUA_MIRROR）" }
+        $x = Join-Path $env:TEMP 'cua-mirror-x'
+        Remove-Item -Recurse -Force $x -ErrorAction SilentlyContinue
+        Expand-Archive $zip $x
+        $bin = Join-Path $env:LOCALAPPDATA 'Programs\Cua\cua-driver\bin'
+        New-Item -ItemType Directory -Force -Path $bin | Out-Null
+        Copy-Item "$x\*.exe" $bin -Force
+        $rel = Join-Path $env:USERPROFILE '.cua-driver\packages\releases\0.28.2-x86_64-pc-windows-msvc'
+        New-Item -ItemType Directory -Force -Path $rel | Out-Null
+        Copy-Item "$x\*.exe" $rel -Force
+        $cur = Join-Path $env:USERPROFILE '.cua-driver\packages\current'
+        if (Test-Path $cur) { cmd /c rmdir "$cur" }
+        New-Item -ItemType Junction -Path $cur -Target $rel | Out-Null
+        $cfg = Join-Path $env:USERPROFILE '.cua-driver\config.json'
+        if (-not (Test-Path $cfg)) { '{"telemetry_enabled":false}' | Set-Content $cfg }
+        AddUserPath $bin
+        & (Join-Path $bin 'cua-driver.exe') autostart kick | Out-Null
+        Ok "cua-driver -> $bin"
+      }
+    } catch {
+      Warn "cua-driver 镜像下载失败: $($_.Exception.Message)"
+      Warn '稍后补装（二选一）: ① 重跑本脚本 ② 官方渠道: $env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex; cua-driver autostart kick'
+      Warn '没有 cua 也能用：浏览器扩展可按 skills/scrader/references/install.md 手工加载（一条chrome://extensions操作）'
     }
   }
 }
@@ -127,7 +140,7 @@ if (-not $DryRun) {
   if ($LASTEXITCODE -eq 0) { Ok '自检 bridge OK' } else { Warn '自检未通过 —— 检查上方输出' }
 }
 Write-Host ''
-Info "源码: $Root"
+Info "源码: $Root（已写入 ~/.agents/skills/scrader/source-path.txt，agent 自动读取）"
 Info '下一步 —— 对你的 agent 说:「按 scrader 技能完成安装」'
 Info '  （它会: 注册 MCP 到本宿主 → 重连 → 用 cua 自动加载浏览器扩展 → 验证全链路）'
 if ($DryRun) { Warn 'DryRun 演练结束，未做任何更改。' }

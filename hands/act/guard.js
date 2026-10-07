@@ -41,6 +41,14 @@ const nav = (tabId, url) => callBridge('navigate', { tabId, url }, 60000);
   if (has('block')) { const until = guard.recordBlock(args.host, +args.block || 20); console.log('blocked until', new Date(until).toLocaleString()); process.exit(0); }
   if (has('collected')) { const c = guard.recordCollect(args.host, +args.collected); console.log('今日累计', c); process.exit(0); }
   if (has('unblock')) { guard.clearBlock(args.host); console.log('cooldown cleared'); process.exit(0); }
-  console.error('用法见文件头注释');
+  console.error([
+    '用法:',
+    '  node hands/act/guard.js --tab T --check            检测当前页封锁态(hard/soft/ok)',
+    '  node hands/act/guard.js --host H --gate --n 200    限额闸门(blocked/daily_cap)',
+    '  node hands/act/guard.js --tab T --host H --warmup  温启(种cookie→轻浏览)',
+    '  node hands/act/guard.js --host H --block 30        记录封锁,冷却30分钟',
+    '  node hands/act/guard.js --host H --collected 200   回写今日采集量',
+    '  node hands/act/guard.js --host H --unblock         解除冷却',
+  ].join('\n'));
   process.exit(1);
 })().catch((e) => { console.error('FATAL', e.message); process.exit(1); });

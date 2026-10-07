@@ -1,6 +1,12 @@
 # agent 自主安装 runbook（引导脚本跑完后，agent 按此完成剩余安装）
 
 前置：引导脚本已就位三样——Node≥18、技能（~/.agents/skills/scrader）、cua-driver。
+
+**源码定位**（本 runbook 所有 `<源码>` 指它，按序尝试）：
+1. `~/.agents/skills/scrader/source-path.txt`——引导脚本写入的绝对路径（首选）；
+2. 默认 `%LOCALAPPDATA%\scrader\src\repo`（独立运行引导脚本的落点）；
+3. 都没有→问用户「引导脚本结束时打印的"源码:"那行是什么」。
+
 本 runbook 的每一步都是 agent 可执行的动作；扩展加载不再是"手工步骤"——**cua 装好后 agent 就能操作电脑，扩展加载由 agent 自动完成**。
 以下流程于 2026-10 在真机（Win10 + Chrome 126 + Edge 126）端到端实测通过。
 

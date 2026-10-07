@@ -18,19 +18,25 @@ docs/ARCHITECTURE.md for details
 
 ## Highlights
 
-- **18 MCP tools** — tabs, page reading, `evaluate` (arbitrary JS), screenshot …
+- **19 MCP tools** — tabs, page reading, `evaluate` (arbitrary JS), screenshot, `desktop` (UIA desktop automation) …
 - **Trusted humanized input** — click / fill / scroll go through `chrome.debugger` (`isTrusted=true`) with bezier mouse paths, jitter, per-key typing rhythm; falls back to synthetic events automatically
 - **`harvest`** — generic list scraper: anti-virtual-list scrolling, stable-id dedupe, two-pass gap fill, image normalization
+- **act intent layer** — verbs like open_item / read_scroll / click_verified ("state intent, not coordinates"), zero-input rehearsal before execution, per-site capability learning (seeds + user layer)
+- **anti-block guard + 6-step collect protocol** — one `collect.js` command enforced in code: gate → block-signature check → warmup → quota clamp → humanized scroll-harvest → validation & ledger
+- **dual-browser** — Chrome and Edge extensions can coexist: the bridge tags clients by UA and routes calls automatically
+- **agent skill distribution** — install/usage/site knowledge ships with the package (SKILL.md + references); a fresh agent needs zero hand-holding
 - **`decide`** (optional) — Jev fast decisions: TypeSafe → OpenRouter → any OpenAI-compatible LLM
 - **No CDP port 9222** — no "allow debugging" consent prompts, ever
+
+> **Platforms**: full features on Windows 10/11 (bootstrap + cua desktop automation are Windows-only). macOS / Linux can run the browser side (bridge + extension); desktop automation is not supported there yet.
 
 ## Architecture
 
 ```
-Agent (MCP stdio) ── core/index.js ── HTTP 127.0.0.1:7827 ── bridge.js ── WebSocket ── Chrome extension (MV3)
+Agent (MCP stdio) ── core/index.js ── HTTP 127.0.0.1:7827 ── bridge.js ── WebSocket ── Chrome/Edge extension (MV3)
 ```
 
-The extension owns the browser; the bridge auto-spawns when needed.
+The extension owns the browser; the bridge auto-spawns on first call (and self-revives if the process dies).
 
 ## Install (two-phase: minimal bootstrap → the agent finishes the rest)
 
@@ -40,9 +46,13 @@ irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
 ```
 `-DryRun` rehearses. The installer is framework-free and prints a one-line pointer.
 
-**Phase 2 — the agent completes it** (user says "finish installing per the scrader skill"): the skill's `references/install.md` runbook has the agent register MCP into its own host (`node scripts/register.js --agent pi`, table-driven), reconnect, then **auto-load the browser extension via cua** (chrome://extensions → dev mode → Load unpacked → folder dialog set_text — no manual browser steps left), and verify the full chain.
+**Phase 2 — the agent completes it** (user says "finish installing per the scrader skill"): the skill's `references/install.md` runbook has the agent register MCP into its own host (`node scripts/register.js --agent pi`, table-driven), reconnect, then **auto-load the browser extension via cua** (chrome://extensions → dev mode → Load unpacked → folder dialog set_text — no manual browser steps left), and verify the full chain. The source location is written to `~/.agents/skills/scrader/source-path.txt` for the agent to pick up.
 
-Without phase 1 — CN: `npx -y git+https://gitee.com/yeuimu/scrader.git` (overseas: `npx -y github:yeuimu/scrader`), then MCP config `{"command":"node","args":["<repo>/core/index.js"]}` in any client.
+Without phase 1 (any MCP client): CN `npx -y git+https://gitee.com/yeuimu/scrader.git`, overseas `npx -y github:yeuimu/scrader`:
+```json
+{ "mcp": { "servers": { "scrader": { "command": "node", "args": ["<path to core/index.js inside the package>"] } } } }
+```
+The npm package includes the extension source (`hands/browser/extension/`) and all scripts; only the gaze weights (93MB) are not bundled — grab `gaze-weights-*.zip` from the [releases](https://github.com/yeuimu/scrader/releases) and unzip into `eyes/gaze/weights/` if you need visual grounding.
 
 ## Tools
 
@@ -61,8 +71,8 @@ harvest({
   itemSelector: 'a[href*="-g-"]',   // Temu product cards
   maxItems: 200,
   fields: [
-    { key: 'price',     pattern: '(\\d[\\d,]*)円', kind: 'int' },
-    { key: 'soldCount', pattern: '已售([\\d,.]+[万K]?)件' },
+    { key: 'price',     pattern: '(\\d[\\d,]*)円' },
+    { key: 'soldCount', pattern: '已售([\\d,.]+[万K]?)件|([\\d,.]+[万K]?)販売' },  // one site, many locales: bilingual regex
   ],
 })
 // → { items: [...], stats: { count, null_price, uniqueImages, … } }
@@ -76,7 +86,11 @@ harvest({
 
 ## Security
 
-Bridge binds `127.0.0.1` only · keys live only in the user config dir (never in git) · domain allowlist on the options page · audit log via `SCRADER_LOG=<file>`.
+Bridge binds `127.0.0.1` only · keys live only in the user config dir (never in git) · domain allowlist on the options page (defaults to `*`; narrow it down for site whitelisting) · audit log via `SCRADER_LOG=<file>`.
+
+## Uninstall
+
+`powershell -ExecutionPolicy Bypass -File scripts\uninstall.ps1` (`-DryRun` rehearses; `-RemoveData` also removes user data; the two manual steps — extension removal and the host mcp.json entry — are printed by the script).
 
 ## Dev
 
@@ -95,7 +109,8 @@ MIT
 Install and configure scrader (generic browser/desktop controller) — all from China-friendly mirrors:
 1) Minimal bootstrap (installs exactly three things: Node >=18 / the skill / cua-driver), PowerShell:
    irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
-2) Finish the rest per the skill at ~/.agents/skills/scrader/ (references/install.md runbook):
+2) Finish the rest per the skill at ~/.agents/skills/scrader/ (references/install.md runbook;
+   the sources location is read from source-path.txt in the same directory):
    register MCP into your host (node <sources>/scripts/register.js --agent <pi|zcode>, or manual per host format) -> reconnect session
    -> auto-load the browser extension via cua (chrome://extensions -> dev mode -> Load unpacked -> folder dialog set_text
      the absolute path <sources>\hands\browser\extension; dialog host pid changes every time — find_window first; set_text is backslash-safe)

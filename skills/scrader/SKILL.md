@@ -15,8 +15,9 @@ irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
 ```
 
 **阶段 2 · agent 自主完成**（用户说"按 scrader 技能完成安装"即触发）：按 `references/install.md` runbook 执行——
+0. 定位源码：读 `~/.agents/skills/scrader/source-path.txt`（引导脚本写入），下文 `<源码>` 均指它
 1. 注册进本宿主（`node <源码>/scripts/register.js --agent pi`，表驱动）→ 重连
-2. **用 cua 自动加载浏览器扩展**（chrome://extensions → 开发者模式 → Load unpacked → 文件对话框 set_text 路径——不再是用户手工步骤，UIA 步骤见 runbook）
+2. **用 cua 自动加载浏览器扩展**（chrome://extensions → 开发者模式 → 加载未打包的扩展程序 → 文件对话框 set_text 路径——不再是用户手工步骤，UIA 步骤见 runbook）
 3. 全链路验证（status/read_page/desktop）
 4. 按需自装可选项（gaze 依赖、decide 密钥、npm 源）
 
