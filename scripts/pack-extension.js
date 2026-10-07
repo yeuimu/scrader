@@ -1,5 +1,5 @@
 // scripts/pack-extension.js — 扩展打包：dist/scrader-extension-<version>.zip
-// 分发方式：解压 → chrome://extensions 开发者模式 → 加载已解压。
+// 分发方式：解压 → chrome://extensions 开发者模式 → 加载未打包。
 // 打包前强制校验 vendor 与 motion 一致，防止打出漂移产物。
 'use strict';
 const fs = require('fs');
@@ -23,4 +23,4 @@ if (process.platform === 'win32') {
   execFileSync('sh', ['-c', `cd "${EXT}" && zip -qr "${OUT}" .`], { stdio: 'inherit' });
 }
 console.log('已打包 ' + path.relative(ROOT, OUT) + ' (' + (fs.statSync(OUT).size / 1024).toFixed(0) + ' KB)');
-console.log('安装：解压 → chrome://extensions → 开发者模式 → 加载已解压的扩展程序');
+console.log('安装：解压 → chrome://extensions → 开发者模式 → 加载未打包的扩展程序');
