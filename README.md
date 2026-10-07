@@ -52,7 +52,7 @@ Without phase 1 (any MCP client): CN `npx -y git+https://gitee.com/yeuimu/scrade
 ```json
 { "mcp": { "servers": { "scrader": { "command": "node", "args": ["<path to core/index.js inside the package>"] } } } }
 ```
-The npm package includes the extension source (`hands/browser/extension/`) and all scripts; only the gaze weights (93MB) are not bundled — grab `gaze-weights-*.zip` from the [releases](https://github.com/yeuimu/scrader/releases) and unzip into `eyes/gaze/weights/` if you need visual grounding.
+The npm package includes the extension source (`hands/browser/extension/`) and all scripts; only the gaze weights (93MB) are not bundled — grab `gaze-weights-*.zip` from the [releases](https://github.com/yeuimu/scrader/releases) (or pull just `eyes/gaze/weights/` out of the [source archive](https://gitee.com/yeuimu/scrader/repository/archive/main.zip), which bundles everything) if you need visual grounding.
 
 ## Tools
 

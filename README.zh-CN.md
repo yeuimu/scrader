@@ -52,7 +52,7 @@ irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
 ```json
 { "mcp": { "servers": { "scrader": { "command": "node", "args": ["<包内 core/index.js 路径>"] } } } }
 ```
-npm 包含扩展源码（`hands/browser/extension/`）与全部脚本；仅 gaze 权重（93MB）不在包内——需要视觉感知时从 [Gitee Release](https://gitee.com/yeuimu/scrader/releases) 下载 `gaze-weights-*.zip` 解压到 `eyes/gaze/weights/`。
+npm 包含扩展源码（`hands/browser/extension/`）与全部脚本；仅 gaze 权重（93MB）不在包内——需要视觉感知时从 [Gitee Release](https://gitee.com/yeuimu/scrader/releases) 下载 `gaze-weights-*.zip` 解压到 `eyes/gaze/weights/`，或从[源码包](https://gitee.com/yeuimu/scrader/repository/archive/main.zip)（含全部权重）里只抽 `eyes/gaze/weights/`。
 
 ## 工具
 
