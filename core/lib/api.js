@@ -3,25 +3,26 @@
 
 const S = {
   tabId: { type: 'number', description: '目标标签页 id（list_tabs 获取）；省略则用当前活动标签页' },
+  browser: { type: 'string', enum: ['chrome', 'edge'], description: '多浏览器各装一份扩展时，指定走哪个（省略=最近活跃优先，tab 不存在时自动转移）' },
 };
 const TOOLS_DEF = [
   { name: 'status', description: '查看 scrader 连接状态（扩展是否连上桥接）', inputSchema: { type: 'object', properties: {} } },
-  { name: 'list_tabs', description: '列出浏览器所有标签页', inputSchema: { type: 'object', properties: {} } },
-  { name: 'open_tab', description: '新建标签页打开 URL', inputSchema: { type: 'object', properties: { url: { type: 'string' }, active: { type: 'boolean', description: '是否置前，默认 true' } }, required: ['url'] } },
+  { name: 'list_tabs', description: '列出浏览器所有标签页', inputSchema: { type: 'object', properties: { browser: S.browser } } },
+  { name: 'open_tab', description: '新建标签页打开 URL（注意：不能开 chrome:// 与 edge:// 内部页）', inputSchema: { type: 'object', properties: { url: { type: 'string' }, active: { type: 'boolean', description: '是否置前，默认 true' }, browser: S.browser }, required: ['url'] } },
   { name: 'close_tab', description: '关闭标签页', inputSchema: { type: 'object', properties: { tabId: { type: 'number' } }, required: ['tabId'] } },
   { name: 'activate_tab', description: '切换到指定标签页', inputSchema: { type: 'object', properties: { tabId: { ...S.tabId } }, required: ['tabId'] } },
-  { name: 'navigate', description: '在标签页内导航到 URL（受扩展 allowlist 约束）', inputSchema: { type: 'object', properties: { url: { type: 'string' }, tabId: S.tabId }, required: ['url'] } },
+  { name: 'navigate', description: '在标签页内导航到 URL（受扩展 allowlist 约束）', inputSchema: { type: 'object', properties: { url: { type: 'string' }, tabId: S.tabId, browser: S.browser }, required: ['url'] } },
   {
     name: 'evaluate', description: '在页面主环境执行任意 JS（支持 async/await），返回 JSON 结果。页面 CSP 禁止 eval 时自动改走 chrome.debugger(CDP)。适用于自定义抓取逻辑（选择器、滚动循环、合并去重等）',
     inputSchema: {
       type: 'object',
-      properties: { code: { type: 'string', description: 'JS 表达式或语句体（例：return document.title）' }, tabId: S.tabId, world: { type: 'string', enum: ['MAIN', 'isolated'] }, useDebugger: { type: 'boolean', description: '强制用 CDP Runtime.evaluate' } },
+      properties: { code: { type: 'string', description: 'JS 表达式或语句体（例：return document.title）' }, tabId: S.tabId, world: { type: 'string', enum: ['MAIN', 'isolated'] }, useDebugger: { type: 'boolean', description: '强制用 CDP Runtime.evaluate' }, browser: S.browser },
       required: ['code'],
     },
   },
-  { name: 'read_page', description: '读取页面标题/URL/可见文本（≤200KB）', inputSchema: { type: 'object', properties: { tabId: S.tabId } } },
+  { name: 'read_page', description: '读取页面标题/URL/可见文本（≤200KB）', inputSchema: { type: 'object', properties: { tabId: S.tabId, browser: S.browser } } },
   { name: 'snapshot', description: '页面交互元素快照（可点击/可输入元素 + CSS 选择器 + 文本），用于无截图定位元素', inputSchema: { type: 'object', properties: { tabId: S.tabId } } },
-  { name: 'click', description: '点击元素。定位二选一：selector（哈希类复用严重的站点不可靠）或 text（按精确可见文本定位：优先带 role=button 祖先、其次最接近视口水平中心者，可避开侧边栏同名链接——Temu 类站点推荐）。默认受信输入（isTrusted=true）+ 拟人化（曲线轨迹/坐标抖动/按压间隔），失败降级合成事件', inputSchema: { type: 'object', properties: { selector: { type: 'string' }, text: { type: 'string', description: '按精确文本定位，与 selector 二选一' }, tabId: S.tabId, trusted: { type: 'boolean' }, humanize: { type: 'boolean' } }, required: [] } },
+  { name: 'click', description: '点击元素。定位二选一：selector（哈希类复用严重的站点不可靠）或 text（按精确可见文本定位：优先带 role=button 祖先、其次最接近视口水平中心者，可避开侧边栏同名链接——Temu 类站点推荐）。默认受信输入（isTrusted=true）+ 拟人化（曲线轨迹/坐标抖动/按压间隔），失败降级合成事件', inputSchema: { type: 'object', properties: { selector: { type: 'string' }, text: { type: 'string', description: '按精确文本定位，与 selector 二选一' }, tabId: S.tabId, trusted: { type: 'boolean' }, humanize: { type: 'boolean' }, browser: S.browser }, required: [] } },
   { name: 'fill', description: '向输入框填入文本。默认受信：真实点击聚焦 + Ctrl+A 全选 + 逐字符随机节奏键入（中文等多字节字符自动 insertText）；trusted:false 用合成事件（原生 value setter）', inputSchema: { type: 'object', properties: { selector: { type: 'string' }, value: { type: 'string' }, tabId: S.tabId, trusted: { type: 'boolean' }, humanize: { type: 'boolean' } }, required: ['selector', 'value'] } },
   { name: 'press_key', description: '按键（Enter/Tab/Escape/ArrowDown/单字符）。默认受信输入（真实 keyDown/keyUp + 随机间隔），失败降级合成事件', inputSchema: { type: 'object', properties: { key: { type: 'string' }, tabId: S.tabId, trusted: { type: 'boolean' }, humanize: { type: 'boolean' } }, required: ['key'] } },
   { name: 'scroll', description: '滚动页面。默认受信拟人化滚轮（mouseWheel 事件序列：随机档位/间隔、偶尔回滚、鼠标漂移；isTrusted=true）。untilText 或 untilSelector：滚到该元素进入视口即停（虚拟列表友好，每轮现查元素）；否则按 mode by 增量 / to 绝对位置滚一次。humanize:false 提速', inputSchema: { type: 'object', properties: { mode: { type: 'string', enum: ['by', 'to'] }, x: { type: 'number' }, y: { type: 'number' }, untilText: { type: 'string', description: '滚到此文本的元素进入视口' }, untilSelector: { type: 'string', description: '滚到此选择器元素进入视口' }, timeoutMs: { type: 'number', default: 30000 }, trusted: { type: 'boolean' }, humanize: { type: 'boolean' }, tabId: S.tabId } } },
@@ -45,6 +46,7 @@ const TOOLS_DEF = [
       type: 'object',
       properties: {
         tabId: S.tabId,
+        browser: S.browser,
         itemSelector: { type: 'string', description: '条目锚点选择器，如 a[href*="-g-"]' },
         maxItems: { type: 'number', description: '上限，默认 40；0 = 不限（滚到底）' },
         cardLevels: { type: 'number', description: '锚点向上几层是完整卡片，默认 4' },

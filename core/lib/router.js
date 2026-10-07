@@ -60,6 +60,16 @@ async function handleCall(params) {
   const def = TOOLS_DEF.find((t) => t.name === name);
   if (!def) return { content: [{ type: 'text', text: '未知工具: ' + name }], isError: true };
 
+  // status：扩展状态 + bridge 多客户端清单（Chrome/Edge 可同时在线，按 UA 标记）
+  if (name === 'status') {
+    let clients = [];
+    try { const r = await bridgeStatus(); clients = ((r.json || {}).clients) || []; } catch {}
+    let extStatus = null;
+    try { const r2 = await callBridge('status', {}, 5000); extStatus = ((r2.json || {}).data) || null; } catch {}
+    const out = Object.assign({ connected: false }, extStatus || {}, { bridge: { port: PORT, clients } });
+    return { content: [{ type: 'text', text: JSON.stringify(out, null, 2) }] };
+  }
+
   // decide：脑在内核，不经过任何执行面
   if (name === 'decide') {
     let local = null, localErr = null;
@@ -93,13 +103,21 @@ async function handleCall(params) {
     }
   }
 
-  // 其余 → 浏览器桥
+  // 其余 → 浏览器桥（桥进程意外死亡时自动拉起重试一次）
   const timeoutMs = name === 'evaluate' || name === 'wait_for' ? 300000 : 90000;
   let r;
   try {
     r = await callBridge(name, args, timeoutMs);
   } catch (e) {
-    return { content: [{ type: 'text', text: '桥接不可达: ' + ((e && e.message) || e) + '（bridge.js 应已自动拉起，检查端口 ' + PORT + '）' }], isError: true };
+    const msg = String((e && e.message) || e);
+    if (!/ECONNREFUSED|桥接不可达/.test(msg)) {
+      return { content: [{ type: 'text', text: '桥接不可达: ' + msg + '（检查端口 ' + PORT + '）' }], isError: true };
+    }
+    const ok = await ensureBridge();
+    if (!ok) return { content: [{ type: 'text', text: '桥接不可达且自动拉起失败（检查端口 ' + PORT + ' / node 环境）' }], isError: true };
+    try { r = await callBridge(name, args, timeoutMs); } catch (e2) {
+      return { content: [{ type: 'text', text: '桥接不可达: ' + ((e2 && e2.message) || e2) }], isError: true };
+    }
   }
   const j = r.json || {};
   if (!j.ok) return { content: [{ type: 'text', text: String(j.error || ('HTTP ' + r.status)) }], isError: true };
