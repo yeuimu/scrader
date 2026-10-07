@@ -7,26 +7,20 @@ description: 通用浏览器/桌面自动化控制器（MCP）。当用户要求
 
 三层架构：`core`（脑：MCP API + decide）→ `hands`（手：浏览器扩展 / cua 桌面 / **act 意图动词层**）→ `eyes`（DOM / UIA / gaze 视觉）+ `motion`（拟人轨迹）。仓库 `docs/ARCHITECTURE.md`。
 
-## 一、安装（新机器 / 新 agent，全部 Gitee 优先，无 GitHub 依赖）
+## 一、安装（两阶段：极简引导 → agent 自主完成）
 
-**一键（推荐）**——纯引导只管依赖与源码（Node≥18 检查→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像；结尾 node core/index.js --check 自检）：
+**阶段 1 · 极简引导**（人类执行一次，只装三样：Node≥18 / 技能 / cua-driver，全国内源）：
 ```
 irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
 ```
 
-**手工两步（核心功能只需这两步，前置 Node ≥ 18）**：
-1. 扩展：`chrome://extensions` → 开发者模式 → 加载已解压 → 选 `hands/browser/extension/`（来自源码包或 release 的 scrader-extension zip）
-2. MCP 注册（任意 MCP host）：
-   ```json
-   {"command": "node", "args": ["<源码目录>/core/index.js"]}
-   ```
-   免克隆：`npx -y git+https://gitee.com/yeuimu/scrader.git`
+**阶段 2 · agent 自主完成**（用户说"按 scrader 技能完成安装"即触发）：按 `references/install.md` runbook 执行——
+1. 注册进本宿主（`node <源码>/scripts/register.js --agent pi`，表驱动）→ 重连
+2. **用 cua 自动加载浏览器扩展**（chrome://extensions → 开发者模式 → Load unpacked → 文件对话框 set_text 路径——不再是用户手工步骤，UIA 步骤见 runbook）
+3. 全链路验证（status/read_page/desktop）
+4. 按需自装可选项（gaze 依赖、decide 密钥、npm 源）
 
-**可选加重项**：cua-driver 桌面自动化（cn-setup 已含；海外 `irm https://cua.ai/driver/install.ps1 | iex`）；gaze 视觉感知（权重已在 git 里，clone 即得）；decide 密钥（`core/providers.example.json` → `%APPDATA%/scrader_mcp/config.json`，llm 兜底可填 DeepSeek/GLM）。
-
-**装进 pi 等其他 agent**：`node <源码>/scripts/register.js --agent pi`——表驱动注册器（幂等写 mcp.json + 装技能，`--list` 看支持列表；安装器 cn-setup 不含框架知识）。装完重启会话，工具以 `mcp__scrader__*` 出现。
-
-**首次验证**：`status` 显示扩展已连接 → `read_page` 任一页面 → `desktop` 调 `list_apps`（若装了 cua）。
+免克隆备选：`npx -y git+https://gitee.com/yeuimu/scrader.git`（海外 `npx -y github:yeuimu/scrader`）。
 
 ## 二、使用决策树
 

@@ -32,33 +32,17 @@ Agent (MCP stdio) ── core/index.js ── HTTP 127.0.0.1:7827 ── bridge.
 
 The extension owns the browser; the bridge auto-spawns when needed.
 
-## Install
+## Install (two-phase: minimal bootstrap → the agent finishes the rest)
 
-0. **China-network one-liner** (recommended for CN; pure bootstrap — deps & sources only: Node (>=18 check) / Python deps / cua-driver from domestic mirrors; ends with a self-check) —
-   ```
-   irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
-   ```
-   Add `-DryRun` to rehearse (in-repo: `powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1 -DryRun`). Then register into local agents: `node scripts/register.js --agent pi` (table-driven registrar; the installer stays framework-free).
-1. **Extension** — `chrome://extensions` → Developer mode → *Load unpacked* → select `hands/browser/extension/`
-2. **MCP server** — add to any MCP client config:
-   ```json
-   {
-     "mcp": {
-       "servers": {
-         "scrader": {
-           "command": "node",
-           "args": ["<repo-path>/core/index.js"]
-         }
-       }
-     }
-   }
-   ```
-   Without cloning — CN: `npx -y git+https://gitee.com/yeuimu/scrader.git` (overseas: `npx -y github:yeuimu/scrader`; Windows clients: wrap with `cmd /c npx ...`).
-3. **Decision key** (optional, only for `decide`) — copy `core/providers.example.json` to:
-   - Windows: `%APPDATA%\scrader_mcp\config.json`
-   - macOS / Linux: `~/.config/scrader_mcp/config.json`
+**Phase 1 — bootstrap** (a human runs this once; installs exactly three things — Node ≥18, the skill, cua-driver — all from domestic mirrors):
+```
+irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
+```
+`-DryRun` rehearses. The installer is framework-free and prints a one-line pointer.
 
-Restart the agent session — tools appear as `mcp__scrader__*`.
+**Phase 2 — the agent completes it** (user says "finish installing per the scrader skill"): the skill's `references/install.md` runbook has the agent register MCP into its own host (`node scripts/register.js --agent pi`, table-driven), reconnect, then **auto-load the browser extension via cua** (chrome://extensions → dev mode → Load unpacked → folder dialog set_text — no manual browser steps left), and verify the full chain.
+
+Without phase 1 — CN: `npx -y git+https://gitee.com/yeuimu/scrader.git` (overseas: `npx -y github:yeuimu/scrader`), then MCP config `{"command":"node","args":["<repo>/core/index.js"]}` in any client.
 
 ## Tools
 
@@ -105,31 +89,18 @@ MIT
 
 ## Agent setup and usage
 
-> Send the prompt below to any MCP-capable agent to install, configure and verify scrader. The usage decision tree and battle-tested rules live at `skills/scrader/SKILL.md` (copy it into the agent's skills directory for auto-triggering).
+> Send the prompt below to any MCP-capable agent. The skill runbook (`skills/scrader/references/install.md`) holds the full agent-driven install — including auto-loading the browser extension via cua.
 
 ```text
-Install and configure scrader (generic browser/desktop controller) — all from China-friendly mirrors, no GitHub needed:
-0) One-shot bootstrap (detects what's missing and installs it: Node->npmmirror, Python deps->Tsinghua PyPI, cua-driver->Gitee mirror):
+Install and configure scrader (generic browser/desktop controller) — all from China-friendly mirrors:
+1) Minimal bootstrap (installs exactly three things: Node >=18 / the skill / cua-driver), PowerShell:
    irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
-   (no uv? falls back to venv + Tsinghua pip, never force-installs uv; no npm? Node is installed to the user dir from npmmirror)
-1) Open https://gitee.com/yeuimu/scrader/releases and download (overseas fallback: github.com/yeuimu/scrader/releases):
-   - scrader-extension-<version>.zip (browser extension)
-   - gaze-weights-<version>.zip (visual perception weights)
-   - cua-driver-mirror-0.28.2-win-x64.zip (desktop driver CN mirror; skip if step 0 already installed it)
-   (If asset zips are not yet attached: the source archive alone suffices — load the unpacked extension from hands/browser/extension/, and eyes/gaze/weights/ already contains all YOLO+OCR weights)
-2) Extension: chrome://extensions -> Developer mode -> "Load unpacked" -> select the unzipped extension folder.
-3) MCP config: add a server to your host's MCP config — command=node, args=["<sources>/core/index.js"] — then reload MCP.
-4) decide (optional): ask me whether I have a TypeSafe Jev API key; if yes, copy <sources>/core/providers.example.json
-   to the user config dir (Windows: %APPDATA%/scrader_mcp/, others: ~/.config/scrader_mcp/) as config.json and fill the key.
-   The llm fallback accepts any OpenAI-compatible endpoint — in China use a DeepSeek/GLM baseUrl+apiKey.
-5) cua-driver desktop automation (required) — pick one:
-   CN mirror (recommended): powershell -ExecutionPolicy Bypass -File <sources>/scripts/cn-setup.ps1
-   Official (overseas): $env:CUA_DRIVER_RS_VERSION="0.28.2"; irm https://cua.ai/driver/install.ps1 | iex
-   then cua-driver autostart kick.
-6) Perception weights: unzip gaze-weights-<version>.zip into <sources>/eyes/gaze/weights/ (YOLO icon detection + OCR weights).
-   Python deps self-check (with uv): set UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple first, then
-   uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python <sources>/eyes/gaze/gaze.py --help
-   (no uv: <sources>/eyes/gaze/.venv/Scripts/python.exe gaze.py --help — cn-setup builds this venv automatically).
-7) Verify: scrader status tool reports the extension connected; read_page works on any open page; desktop tool calls list_apps to confirm cua.
-Proceed step by step; ask me before actions needing confirmation (extension load, key entry). Then follow skills/scrader/SKILL.md.
+2) Finish the rest per the skill at ~/.agents/skills/scrader/ (references/install.md runbook):
+   register MCP into your host (node <sources>/scripts/register.js --agent <pi|zcode>, or manual per host format) -> reconnect session
+   -> auto-load the browser extension via cua (chrome://extensions -> dev mode -> Load unpacked -> folder dialog set_text
+     the absolute path <sources>\hands\browser\extension; dialog host pid changes every time — find_window first; set_text is backslash-safe)
+   -> verify: status shows extension connected / read_page any page / desktop list_apps.
+3) Optional (ask me): decide key (core/providers.example.json -> %APPDATA%/scrader_mcp/config.json,
+   llm fallback accepts DeepSeek/GLM OpenAI-compatible endpoints); gaze vision deps (uv or venv + Tsinghua PyPI).
+Proceed step by step; show me evidence per step. Then follow skills/scrader/SKILL.md.
 ```
