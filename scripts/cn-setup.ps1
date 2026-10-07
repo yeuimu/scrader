@@ -80,9 +80,14 @@ if ($PSScriptRoot -and (Test-Path (Join-Path $PSScriptRoot '..\package.json'))) 
 
 # ── 1) Node / npm（npmmirror，装到用户目录免管理员）──────────────────
 if (-not $SkipNode) {
+  $nvOk = $false
   if (Have node) {
-    Ok "node $(node -v) 已安装"
-  } else {
+    $nv = (node -v) -replace '^v', ''
+    $major = ($nv -split '\.')[0] -as [int]
+    if ($major -ge 18) { Ok "node $nv 已安装 (>=18)"; $nvOk = $true }
+    else { Warn "node $nv 低于 18 —— 从 npmmirror 升级到 node 22" }
+  }
+  if (-not $nvOk) {
     Info '缺 Node —— 从 npmmirror 二进制镜像安装 node 22（win-x64 zip）'
     $url = $NODE_FALLBACK
     try {
@@ -179,14 +184,62 @@ if (-not $SkipCua) {
   }
 }
 
-# ── 4) 收尾指引（扩展加载 / MCP 注册 / decide 密钥）──────────────────
+# ── 4) MCP 自动注册 + 技能自动安装（检测到 pi / ZCode 就自动配，幂等）──
+$entryArgs = @((Join-Path $Root 'core\index.js'))
+function Install-McpSkill($agentDir, $label, $withMcp) {
+  if (-not (Test-Path $agentDir)) { return }
+  if ($withMcp) {
+    $mcpFile = Join-Path $agentDir 'mcp.json'
+    if ($DryRun) { Info "[dry] $label MCP 注册 -> $mcpFile" }
+    else {
+      $scrader = '{"command":"node","args":' + ($entryArgs | ConvertTo-Json -Compress) + '}'
+      $raw = ''
+      if (Test-Path $mcpFile) { $raw = Get-Content $mcpFile -Raw }
+      if ($raw -match '"scrader"') { Ok "$label MCP 已注册（跳过，幂等）" }
+      elseif ($raw -match '\S') {
+        try {
+          $o = ConvertFrom-Json $raw
+          if (-not $o.mcpServers) { $o | Add-Member -NotePropertyName mcpServers -NotePropertyValue ([pscustomobject]@{}) }
+          $o.mcpServers | Add-Member -NotePropertyName scrader -NotePropertyValue (ConvertFrom-Json $scrader) -Force
+          ConvertTo-Json -InputObject $o -Depth 8 | Set-Content $mcpFile -Encoding utf8
+          Ok "$label MCP 注册（合并进现有配置）: $mcpFile"
+        } catch {
+          Copy-Item $mcpFile "$mcpFile.bak" -Force
+          Set-Content $mcpFile ('{"mcpServers":{"scrader":' + $scrader + '}}') -Encoding utf8
+          Warn "$label mcp.json 解析失败，已备份为 .bak 并写入全新配置"
+        }
+      } else {
+        Set-Content $mcpFile ('{"mcpServers":{"scrader":' + $scrader + '}}') -Encoding utf8
+        Ok "$label MCP 注册: $mcpFile"
+      }
+    }
+  }
+  $skillDir = Join-Path $agentDir 'skills\scrader'
+  if ($DryRun) { Info "[dry] $label 技能安装 -> $skillDir" }
+  else {
+    New-Item -ItemType Directory -Force -Path (Split-Path $skillDir) | Out-Null
+    Copy-Item (Join-Path $Root 'skills\scrader') $skillDir -Recurse -Force
+    Ok "$label 技能安装: $skillDir"
+  }
+}
+Install-McpSkill (Join-Path $env:USERPROFILE '.pi\agent') 'pi' $true
+Install-McpSkill (Join-Path $env:USERPROFILE '.zcode') 'ZCode' $false  # ZCode 只装技能；MCP 配置位置随宿主版本而异，不盲写
+
+# ── 5) 自检（服务端语法 + 桥接拉起）──────────────────────────────────
+if (-not $DryRun) {
+  Info '自检: node core/index.js --check'
+  & node (Join-Path $Root 'core\index.js') --check
+  if ($LASTEXITCODE -eq 0) { Ok '自检通过（bridge OK）' } else { Warn '自检未通过 —— 检查上方输出' }
+}
+
+# ── 6) 收尾指引 ──────────────────────────────────────────────────────
 $ext = Join-Path $Root 'hands\browser\extension'
 Write-Host ''
-Info '后续手工步骤:'
-Info "  1. 扩展: chrome://extensions -> 开发者模式 -> 加载已解压 -> $ext"
-Info '  2. MCP 注册（任意 MCP 客户端）: command=cmd, args=["/c","npx","-y","git+https://gitee.com/yeuimu/scrader.git"]'
-Info "     （或零 npx 流量: command=node, args=[`"$Root\core\index.js`"]）"
-Info '  3. decide 密钥(可选): 复制 core\providers.example.json 到 %APPDATA%\scrader_mcp\config.json'
-Info '     llm 兜底支持任意 OpenAI 兼容端点 —— 国内可填 DeepSeek/GLM 的 baseUrl+apiKey'
+Info '唯一手工步骤（浏览器策略限制，无法自动）:'
+Info "  扩展: chrome://extensions -> 开发者模式 -> 加载已解压 -> $ext"
+Info '其他 MCP 客户端（未被自动注册的）手工加: command=node, args=["<源码>/core/index.js"]'
+Info '  （免克隆: command=cmd, args=["/c","npx","-y","git+https://gitee.com/yeuimu/scrader.git"]）'
+Info 'decide 密钥(可选): 复制 core\providers.example.json 到 %APPDATA%\scrader_mcp\config.json'
+Info '  llm 兜底支持任意 OpenAI 兼容端点 —— 国内可填 DeepSeek/GLM 的 baseUrl+apiKey'
 if ($DryRun) { Warn 'DryRun 演练结束，未做任何更改。去掉 -DryRun 实际执行。' }
 else { Ok '完成。重启 MCP 客户端会话后工具以 mcp__scrader__* 出现。' }

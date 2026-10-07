@@ -34,7 +34,7 @@ The extension owns the browser; the bridge auto-spawns when needed.
 
 ## Install
 
-0. **China-network one-liner** (recommended for CN; detects and installs what's missing — Node / Python deps / cua-driver — all from domestic mirrors) —
+0. **China-network one-liner** (recommended for CN; detects and installs what's missing — Node (with >=18 version check) / Python deps / cua-driver — all from domestic mirrors; auto-registers MCP + installs the skill when pi/ZCode detected; ends with a self-check) —
    ```
    irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
    ```

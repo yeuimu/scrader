@@ -9,7 +9,7 @@ description: 通用浏览器/桌面自动化控制器（MCP）。当用户要求
 
 ## 一、安装（新机器 / 新 agent，全部 Gitee 优先，无 GitHub 依赖）
 
-**一键（推荐）**——检测缺什么走国内源补什么（Node→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像）：
+**一键（推荐）**——缺什么走国内源补什么（Node≥18 检查→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像；检测到 pi 自动写 mcp.json+装技能、ZCode 装技能；结尾 node core/index.js --check 自检）：
 ```
 irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
 ```
