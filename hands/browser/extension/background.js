@@ -167,10 +167,15 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const rnd = (min, max) => min + Math.random() * (max - min);
 
 let dbgChain = Promise.resolve();
-function withDebugger(fn) { // 串行化调试器占用，避免 evaluate/受信输入并发 attach 冲突
-  const p = dbgChain.then(fn);
-  dbgChain = p.catch(() => {});
-  return p;
+const DBG_TASK_TIMEOUT_MS = 8000;
+function withDebugger(fn) { // 串行化调试器占用 + 任务级超时自愈（超时不堵后续）
+  // attach 竞态/DevTools 占用可能永久挂起：无超时的串行链一次挂住全堵（2026-10-07 pi 实测 60s 超时根因）
+  const run = dbgChain.then(() => Promise.race([
+    fn(),
+    new Promise((_, rej) => setTimeout(() => rej(new Error('debugger 通道 超时(8000ms)')), DBG_TASK_TIMEOUT_MS)),
+  ]));
+  dbgChain = run.catch(() => {});
+  return run;
 }
 
 async function attachDbg(tabId) {

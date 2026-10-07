@@ -48,7 +48,7 @@ harvest/accumulate 字段（MSYS 下正则避免反斜杠；双语——UI 语�
 - 验收基准：40 条 → 0 缺标题/价格/图片、37+ 唯一图；200 条 5 批约 8 分钟（含拟人节奏与冷却）
 - 搜索：`#searchInput` fill → 受信 Enter 或 `form.requestSubmit()`（合成 Enter 被忽略）；新实例先温启再搜索，直接深链 search_result 会被 SW 离线页兜底（像被拒，其实没有）
 - 翻页：程序化 scrollTo 瞬跳 + UIA/文本定位按钮 + 前台拟人点击 + 2~6s 抖动；按钮必须在视口内才响应
-- **受信输入通道可能 60s 超时**（fill/scroll 的 humanize 路径偶发）：降级路径 = 合成事件 + `form.requestSubmit()`（2026-10-07 pi 实测两次超时后全通）；频发时排查桥接 CDP 通道
+- **受信输入通道偶发超时（已修，需扩展重载生效）**：根因 = 扩展 withDebugger 串行链无任务级超时，一次 attach 挂起（DevTools 占用/竞态）全链堵死 → 0.7.2 加 8s 任务超时+链自愈，超时即快速降级合成事件（降级路径 = 合成 + `form.requestSubmit()` 依旧有效）。改 background.js 后需在 chrome://extensions 重载扩展
 - 断点续采：配方按 stableId 合并 OUT 文件，中断重跑自动续
 
 ## 单日限额（guard 默认，种子可调）
