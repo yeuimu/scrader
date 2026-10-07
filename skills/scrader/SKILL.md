@@ -1,60 +1,75 @@
 ---
 name: scrader
-description: 通用浏览器/桌面自动化控制器（MCP）。当用户要求操作浏览器（导航/点击/填表/滚动/截图/读页面）、批量采集列表页数据（商品/搜索结果/瀑布流）、自动化 Windows 桌面应用、或需要在自动化循环中做快速决策（选下一步动作/goal_done/stuck）时使用。Use when the user asks to operate a browser, harvest list pages, automate a desktop app, or needs fast in-loop decisions.
+description: 通用浏览器/桌面自动化控制器（MCP）。当用户要求操作浏览器（导航/点击/填表/滚动/截图/读页面）、批量采集列表页数据（商品/搜索结果/瀑布流，尤其 Temu）、自动化 Windows 桌面应用、需要快速循环决策（decide）、或遇到"采集被封/打不开/验证页"时使用。也用于在其他 agent（pi 等）上安装配置 scrader。Use whenever the user asks to operate a browser, harvest list pages (especially Temu), automate a desktop app, install scrader on a new machine or agent, or deal with scraping blocks.
 ---
 
-# scrader —— 浏览器/桌面控制器使用指南
+# scrader —— 浏览器/桌面控制器（安装 → 使用 → 采集协议）
 
-三层架构：`core`（脑：Agent API + decide 决策）→ `hands`（手：浏览器扩展 / cua-driver 桌面）→ `eyes`（眼：DOM / UIA / gaze 截图视觉）+ `motion`（拟人轨迹横切层）。详细架构见仓库 `docs/ARCHITECTURE.md`。
+三层架构：`core`（脑：MCP API + decide）→ `hands`（手：浏览器扩展 / cua 桌面 / **act 意图动词层**）→ `eyes`（DOM / UIA / gaze 视觉）+ `motion`（拟人轨迹）。仓库 `docs/ARCHITECTURE.md`。
 
-## 工具选择决策树
+## 一、安装（新机器 / 新 agent，全部 Gitee 优先，无 GitHub 依赖）
+
+**一键（推荐）**——检测缺什么走国内源补什么（Node→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像）：
+```
+irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
+```
+
+**手工两步（核心功能只需这两步，前置 Node ≥ 18）**：
+1. 扩展：`chrome://extensions` → 开发者模式 → 加载已解压 → 选 `hands/browser/extension/`（来自源码包或 release 的 scrader-extension zip）
+2. MCP 注册（任意 MCP host）：
+   ```json
+   {"command": "node", "args": ["<源码目录>/core/index.js"]}
+   ```
+   免克隆：`npx -y git+https://gitee.com/yeuimu/scrader.git`
+
+**可选加重项**：cua-driver 桌面自动化（cn-setup 已含；海外 `irm https://cua.ai/driver/install.ps1 | iex`）；gaze 视觉感知（权重已在 git 里，clone 即得）；decide 密钥（`core/providers.example.json` → `%APPDATA%/scrader_mcp/config.json`，llm 兜底可填 DeepSeek/GLM）。
+
+**装进 pi 等其他 agent**：MCP 写 `~/.pi/agent/mcp.json`（同上 command/args）；技能目录拷 `skills/scrader/` → `~/.pi/agent/skills/scrader/`（SKILL.md 约定与 ZCode 通用）。装完重启会话，工具以 `mcp__scrader__*` 出现。
+
+**首次验证**：`status` 显示扩展已连接 → `read_page` 任一页面 → `desktop` 调 `list_apps`（若装了 cua）。
+
+## 二、使用决策树
 
 | 任务 | 用什么 | 备注 |
 |---|---|---|
-| 浏览器导航/点击/填表/滚动/截图/读页 | scrader 本体工具（navigate/click/fill/scroll/read_page/snapshot/evaluate） | click/fill 默认受信输入+拟人化 |
-| 批量采集列表（商品/结果/瀑布流） | `harvest`（itemSelector + fields 正则） | **先查用户目录 experiences/ 站点笔记** |
-| 自动化循环的单步决策 | `decide`（state+questions → 选候选/goal_done/stuck） | 先探活（见铁律 1），~2s/次 |
-| 桌面原生应用（计算器/客户端/安装器） | `desktop`（cua-driver 代理） | 浏览器页面仍用 scrader 本体；element_token 优先于坐标 |
-| 视觉定位（canvas/游戏/无 DOM 表面） | gaze：截图 → YOLO+OCR → 元素列表（`eyes/gaze/gaze.py`） | 坐标语义裁决：UIA label > VLM > OCR |
-| 拟人滑行/点击（真实指针） | `hands/cua/glide.js`（消费 motion timeline） | 用于强风控关键动作 |
-| **随机浏览任务**（逛详情/看评论/点图等意图流） | `hands/act/act.js` 意图动词层：先演练后执行，站点知识自动学习 | 计划=意图动词序列；零知识站点先演练看缺口→探察→入库→复跑 |
-| 数据导出 Excel | 用户目录 recipes/ 配方（如 recipes/temu/export_temu_xlsx.py） | 配方属场景，不在本仓库 |
+| 浏览器导航/点击/填表/滚动/截图/读页 | 本体工具（navigate/click/fill/scroll/read_page/snapshot/evaluate） | click/fill 默认受信输入+拟人化 |
+| 批量采集列表（商品/结果/瀑布流） | `harvest` + 采集协议（下节） | **先读 references/temu.md（Temu 必读）** |
+| 意图式浏览（逛详情/看评论/点击验证） | `hands/act/act.js --plan`（先演练后执行） | 零知识站点：演练看缺口→探察→入库→复跑 |
+| 采集前检查 / 被封处置 | `hands/act/guard.js`（check/gate/warmup/block） | 协议见下节 |
+| 桌面原生应用 | `desktop`（cua-driver 代理） | element_token 优先于坐标 |
+| 视觉定位（canvas/无 DOM 表面） | gaze（截图→YOLO+OCR→元素） | `eyes/gaze/gaze.py` |
+| 自动化循环单步决策 | `decide`（Jev，探活一次再用） | 选项构造质量决定决策质量 |
+| 数据导出 Excel | 用户目录 `recipes/`（temu: export_temu_xlsx.py） | `uv run --with openpyxl python …` |
 
-## 新机器安装（国内网络优先，Gitee Release，无需 clone）
+## 三、采集协议（每次采集必走，封号大多因跳过）
 
-一键检测安装（缺什么补什么：Node→npmmirror、Python 依赖→清华 PyPI、cua-driver→Gitee 镜像）：
-`irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex`（演练加 `-DryRun`）
-分包装下载：https://gitee.com/yeuimu/scrader/releases （扩展 zip、gaze-weights zip、cua-driver 镜像 zip、源码包；海外备选 github.com/yeuimu/scrader/releases）。
+1. **闸门**：`node <源码>/hands/act/guard.js --host <站> --gate` —— 封锁冷却期/超日限直接拒绝。贪量是最常见的封号原因。
+2. **检查**：`guard.js --tab <tabId> --check` —— 检测封锁签名（bgn_no_access/验证页=硬封锁；SW 离线墙=软信号需 curl 对照；列表页 0 卡片=疑似软拒）。
+3. **温启**（新会话/新实例/恢复后必做）：`guard.js --tab <tabId> --host <站> --warmup` —— 首页种 cookie → 停留 → 轻浏览。**直接深链列表页开抓是最高风控权重姿势**。
+4. **采集**：优先站点配方（temu: `%APPDATA%\scrader_mcp\recipes\temu\accumulate_human.js --tab T --target N --out f.json --pid P --wid W`，真实滚轮+拟人点击+回跳，支持断点续采）；轻量场景用 `harvest`。批间冷却 45~120s，单次建议 ≤300 条。
+5. **验收**：唯一 ID 数 = 条数、缺标题/缺价格 = 0（部分页面天然无已售数，不算缺陷）。**locale 决定字段形态**——纯日语页可能无「已售」且按钮是「もっと見る」，详见 references/temu.md。
+6. **记账**：`guard.js --host <站> --collected <N>`。
 
-**1. 浏览器面（必装）**：解压扩展 zip → `chrome://extensions` → 开发者模式 → 加载已解压；服务端源码解压后，在宿主 MCP 配置添加：`command=node, args=["<源码目录>/core/index.js"]`（免克隆：`npx -y git+https://gitee.com/yeuimu/scrader.git`）。
+## 四、封锁处置协议（被封时按此走，禁止自由发挥）
 
-**2. cua-driver 桌面面（必装，Windows）**——二选一：
-国内镜像（推荐）：`powershell -ExecutionPolicy Bypass -File scripts\cn-setup.ps1`（Gitee Release 镜像，官方 cua.ai 安装包的 MIT 原样转存）
-官方渠道（海外）：```powershell
-$env:CUA_DRIVER_RS_VERSION = "0.28.2"; irm https://cua.ai/driver/install.ps1 | iex
-cua-driver autostart kick
-```
+**信号分级**：
+- **硬封锁**：URL 出现 `bgn_no_access.html` / 验证页 / captcha → 立即停止一切该站请求，`guard.js --host <站> --block 20`（≥20 分钟冷却），期间**零请求**——每次重试都在延长封锁。
+- **软信号**：SW 离线墙（"No internet connection"）→ 先 curl 同 URL 对照：curl 通 = 浏览器侧问题；curl 不通 = 检查代理/网络（**先问用户是否在动代理/VPN**，再谈风控——本次教训）；都不是才按封锁处理。
+- **恢复**：冷却到期 → `--unblock` → 温启 → 轻量试水（≤40 条）→ 正常采集。
 
-**3. decide 决策（可选）**：询问用户是否有 TypeSafe Jev Key；有则 `core/providers.example.json` → 用户配置目录 `config.json`（Windows `%APPDATA%scrader_mcp`，其余 `~/.config/scrader_mcp/`）填入，或用环境变量；llm 兜底支持任意 OpenAI 兼容端点（国内可填 DeepSeek/GLM）。
+**pi 等其他 agent 上被封的通用根因**：站点协议知识没跟机器走（技能/种子里有，但 agent 没读）。解法已固化：本技能第三节 + `references/temu.md` + `hands/act/`（守卫代码随 scrader 分发，装了就有）。**不要把本机 experiences 笔记当可迁移知识——它只做本机增量**，通用协议以技能和 seeds 为准。
 
-**4. gaze 视觉感知**：gaze-weights zip 解压到 `eyes/gaze/weights/`（YOLO 图标检测 + OCR 识别权重）；Python 依赖：有 uv 则先设 `UV_DEFAULT_INDEX=https://pypi.tuna.tsinghua.edu.cn/simple` 再 `uv run --with rapidocr-onnxruntime --with onnxruntime --with opencv-python-headless --with numpy python eyes/gaze/gaze.py <截图.png>`；无 uv 用 cn-setup 建的 `eyes/gaze/.venv/Scripts/python.exe`（venv+清华 pip，不强装 uv）。
+## 五、铁律（违反必踩坑）
 
-**验证**：调 scrader 的 `status` 工具（扩展已连接）→ `read_page` 任一页面 → 全链路通。
+1. **Jev 探活一次再进循环**；Jev 只在给定候选中选，选项质量决定决策质量。
+2. **节奏放慢**：翻页 2~6s 抖动、批间冷却、关键词间留冷却；等距间隔是机器指纹。
+3. **读取走 DOM**（harvest/evaluate 零输入事件）；拟人动作只花在必要处。
+4. **坐标**：cua click x,y = get_window_state PNG 像素空间，坐标与尺寸必须同源；每动作前重取几何。
+5. **Chromium 拒收后台输入**：cua 动作一律 `delivery_mode:"foreground"`。
+6. **失败必须有熔断**：页错显式抛出、坐标 NaN 拒点、未导航成功绝不 history.back()、滚动停滞即收手——失败样本喂给风控比慢更致命。
+7. **locale 变体**：同站不同入口 UI 语言不同，按钮/字段匹配一律双语正则（见 references/temu.md）。
 
-## 铁律（实战固化，违反必踩坑）
+## 深度资料
 
-1. **Jev 探活一次再进循环**：发一个小问题（choice+goal_done），返回 `provider:"jev:*"` 即可用；失败则主模型自行决策，本轮不再探测。Jev 只做"在给定候选中选一个"+守护，**选项构造质量决定其决策质量**。
-2. **节奏放慢**：翻页间隔 2~6 秒随机抖动、批次间插无目的小滚动、单会话限量、关键词之间留冷却。等距间隔是机器指纹。
-3. **采集任务先查站点笔记**：`%APPDATA%\scrader_mcp\experiences\`（每站一份，Agent 读写）。
-4. **读取永远走 DOM**（harvest/evaluate，零输入事件零暴露）；拟人动作只花在必要处（搜索提交/强风控）。
-5. **坐标**：cua `click` 的 x,y = `get_window_state` 截图 PNG 像素空间；窗口会被用户拖动/改尺寸，**每个动作前重取几何**，绝不缓存。
-6. **元素语义裁决**：UIA label（`get_window_state query:` 参数，确定性）> VLM 看 SoM 图（会认错编号）> OCR 文本。
-7. **Chromium 拒收后台输入**：cua 动作一律 `delivery_mode:"foreground"`；滚动用阅读式节奏（滑一截停一停看商品），匀速滚到底会触发列表重置陷阱。
-
-## 典型任务流（搜索 → 采集 → 导出）
-
-```
-scrader open_tab 打开目标站 → 拟人点击搜索框（UIA 定位坐标 + hands/cua/glide）
-→ type_text 输入关键词 → 前台点击搜索按钮 → harvest 循环（读取→翻页抖动→合并去重→落盘）
-→ recipes 配方导出 Excel；全程 decide 做循环决策（探活后）
-```
+- **Temu 专篇**（页面特性/封锁签名表/locale 变体/采集参数/验收基准）：`references/temu.md` —— 任何 Temu 任务**先读它**
+- 架构细节：仓库 `docs/ARCHITECTURE.md`；act 层用法：`hands/act/act.js` 文件头注释

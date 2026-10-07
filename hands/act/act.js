@@ -12,6 +12,7 @@ const { snapshot } = require('./grounding');
 const { checkPlan } = require('./rehearse');
 const { verbs } = require('./verbs');
 const siteCache = require('./site_cache');
+const guard = require('./site_guard');
 
 const args = (() => { const o = {}; const a = process.argv.slice(2); for (let i = 0; i < a.length; i += 2) o[a[i].replace(/^--/, '')] = a[i + 1]; return o; })();
 const TAB = +args.tab, PID = +args.pid, WID = +args.wid, EXEC = 'exec' in args;
@@ -26,6 +27,13 @@ const listTabs = () => bridge('list_tabs').then((r) => { const j = r && r.json; 
   const host = new URL(snap0.url).host || 'file.local';
   const cache = siteCache.load(host);
   console.log(`host=${host} 缓存: cards.open=${(cache.cards && cache.cards.open) || '未知(将学习)'} sections=${Object.keys(cache.sections || {}).join('/') || '无'}`);
+
+  // ── 守卫闸门：封锁冷却/日限未过直接拒绝（任何执行先过 guard）──
+  if (EXEC) {
+    const gg = guard.gate(host, cache);
+    console.log('==guard== ' + JSON.stringify(gg));
+    if (!gg.ok) { console.log('⛔ ' + gg.detail); process.exit(3); }
+  }
 
   // ── 演练（快介质）：带缓存的完整快照 + 静态裁决 ──
   const snap = await snapshot(TAB, cache);

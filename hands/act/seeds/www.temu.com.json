@@ -6,7 +6,7 @@
   },
   "sections": {
     "reviews": {
-      "patterns": ["[0-9]+[ ]*条评价", "评价[（(]", "评论[（(]", "查看全部评价", "查看更多评价"],
+      "patterns": ["[0-9]+[ ]*条评价", "[0-9]+[ ]*件の評価", "评价[（(]", "评论[（(]", "查看全部评价", "查看更多评价", "すべての評価を見る"],
       "images_band": { "below": 2600, "size": [55, 420] }
     }
   },
@@ -16,5 +16,18 @@
     "chunk_px": [1700, 2600],
     "quirk": "底部连滚滚轮会触发列表重置；长距离移动用程序化 scrollTo 瞬跳"
   },
-  "notes": "商品卡 target=_blank；离屏元素 innerText 为空须用 textContent；搜索提交须 isTrusted（fill/受信 Enter）或 form.requestSubmit"
+  "guard": {
+    "block_urls": ["bgn_no_access.html", "/bgn_verification", "captcha"],
+    "soft_titles": ["no internet connection"],
+    "warmup": [
+      { "nav": "https://www.temu.com/", "wait": "#searchInput", "dwell": [4000, 8000] },
+      { "scroll": 1400, "dwell": [2500, 5000] }
+    ],
+    "limits": { "daily_cap_items": 800, "batch_cooldown_s": [45, 120], "max_items_per_run": 300, "block_cooldown_min": 20 }
+  },
+  "locale": {
+    "load_more": "^(查看更多|もっと見る|他の商品をもっと見る)",
+    "note": "jp-zh-Hans 深链/搜索页 UI 中文；/jp/ 纯日语分类页 UI 日语——按钮/字段匹配一律双语"
+  },
+  "notes": "商品卡 target=_blank；离屏元素 innerText 为空须用 textContent；搜索提交须 isTrusted（fill/受信 Enter）或 form.requestSubmit；新实例先温启（首页种 cookie）再进列表页"
 }

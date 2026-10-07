@@ -73,4 +73,35 @@ const ok = (m) => { n++; console.log('  ✅ ' + m); };
   ok('checkPlan 未知动词拦截');
 }
 
+
+// ── site_guard：限额闸门 + 封锁回写（纯逻辑，临时配置目录）──
+{
+  process.env.SCRADER_CONFIG_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'act-guard-'));
+  const guard = require('../hands/act/site_guard');
+  const host = 'www.temu.com';
+  // 未封锁未超限 → 放行
+  const g1 = guard.gate(host, guard.guardFor(host, {}));
+  assert.ok(g1.ok, 'fresh host should pass gate');
+  // 记封锁 → 闸门拒绝且给冷却指引
+  guard.recordBlock(host, 20);
+  const g2 = guard.gate(host, siteCache.load(host));
+  assert.ok(!g2.ok && g2.why === 'cooldown');
+  // 解除 → 放行；采集计数累加，超日限拒绝
+  guard.clearBlock(host);
+  const seed = JSON.parse(fs.readFileSync(path.join(__dirname, '../hands/act/seeds/www.temu.com.json'), 'utf8'));
+  const cap = seed.guard.limits.daily_cap_items;
+  guard.recordCollect(host, cap - 10);
+  guard.recordCollect(host, 10);
+  const g3 = guard.gate(host, siteCache.load(host));
+  assert.ok(!g3.ok && g3.why === 'daily_cap', 'daily cap should trip at ' + cap);
+  // guardFor 种子合并：limits 来自种子，warmup 可被用户层覆盖
+  const gf = guard.guardFor(host, siteCache.load(host));
+  assert.strictEqual(gf.limits.daily_cap_items, cap);
+  assert.ok(gf.warmup.length > 0);
+  assert.ok(gf.block_urls.includes('bgn_no_access.html'));
+  fs.rmSync(process.env.SCRADER_CONFIG_DIR, { recursive: true, force: true });
+  delete process.env.SCRADER_CONFIG_DIR;
+  ok('site_guard 闸门/封锁回写/日限/种子合并');
+}
+
 console.log(`✅ act 层纯逻辑 ${n} 组断言全部通过`);
