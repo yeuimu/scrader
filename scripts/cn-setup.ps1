@@ -192,7 +192,8 @@ function Install-McpSkill($agentDir, $label, $withMcp) {
     $mcpFile = Join-Path $agentDir 'mcp.json'
     if ($DryRun) { Info "[dry] $label MCP 注册 -> $mcpFile" }
     else {
-      $scrader = '{"command":"node","args":' + ($entryArgs | ConvertTo-Json -Compress) + '}'
+      # -InputObject 防管道解包：单元素数组经管道会被摊平成字符串，args 就不是数组了（PS5.1 坑，实测抓到）
+      $scrader = '{"command":"node","args":' + (ConvertTo-Json -InputObject $entryArgs -Compress) + '}'
       $raw = ''
       if (Test-Path $mcpFile) { $raw = Get-Content $mcpFile -Raw }
       if ($raw -match '"scrader"') { Ok "$label MCP 已注册（跳过，幂等）" }
