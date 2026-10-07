@@ -41,14 +41,14 @@ irm https://gitee.com/yeuimu/scrader/raw/main/scripts/cn-setup.ps1 | iex
 | 自动化循环单步决策 | `decide`（Jev，探活一次再用） | 选项构造质量决定决策质量 |
 | 数据导出 Excel | 用户目录 `recipes/`（temu: export_temu_xlsx.py） | `uv run --with openpyxl python …` |
 
-## 三、采集协议（每次采集必走，封号大多因跳过）
+## 三、采集协议（推荐一条命令；六步在代码里强制，agent 无法跳步）
 
-1. **闸门**：`node <源码>/hands/act/guard.js --host <站> --gate` —— 封锁冷却期/超日限直接拒绝。贪量是最常见的封号原因。
-2. **检查**：`guard.js --tab <tabId> --check` —— 检测封锁签名（bgn_no_access/验证页=硬封锁；SW 离线墙=软信号需 curl 对照；列表页 0 卡片=疑似软拒）。
-3. **温启**（新会话/新实例/恢复后必做）：`guard.js --tab <tabId> --host <站> --warmup` —— 首页种 cookie → 停留 → 轻浏览。**直接深链列表页开抓是最高风控权重姿势**。
-4. **采集**：优先站点配方（temu: `%APPDATA%\scrader_mcp\recipes\temu\accumulate_human.js --tab T --target N --out f.json --pid P --wid W`，真实滚轮+拟人点击+回跳，支持断点续采）；轻量场景用 `harvest`。批间冷却 45~120s，单次建议 ≤300 条。
-5. **验收**：唯一 ID 数 = 条数、缺标题/缺价格 = 0（部分页面天然无已售数，不算缺陷）。**locale 决定字段形态**——纯日语页可能无「已售」且按钮是「もっと見る」，详见 references/temu.md。
-6. **记账**：`guard.js --host <站> --collected <N>`。
+```
+node <源码>/hands/act/collect.js --tab <tabId> --pid P --wid W --target N --out f.json
+```
+内部强制顺序：①闸门（封锁冷却/日限拒绝）②封锁签名检查（硬封锁即记账退出）③温启（目标页 0 卡时先种 cookie）④限额裁剪（剩余不足自动降目标，绝不超限）⑤站点配方滚采（`<源码>/recipes/temu/accumulate_human.js`，真实滚轮+拟人点击+断点续采）⑥验收（唯一 ID/三硬字段零缺失）+ 记账。
+
+**手动细控才拆步**：`guard.js --check/--gate/--warmup/--block/--unblock/--collected`（各子命令见文件头注释）。轻量单屏采集也可用 `harvest` 工具。批间冷却 45~120s、单次 ≤300 条由守卫默认值约束（seeds 可调）。
 
 ## 四、封锁处置协议（被封时按此走，禁止自由发挥）
 

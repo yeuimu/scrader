@@ -104,4 +104,23 @@ const ok = (m) => { n++; console.log('  ✅ ' + m); };
   ok('site_guard 闸门/封锁回写/日限/种子合并');
 }
 
+
+// ── collect 纯函数：验收 + 限额裁剪 ──
+{
+  const { validateItems, clampTarget } = require('../hands/act/collect');
+  // 无法直接 require CLI？——collect.js 是脚本不是模块：把纯函数提出校验前先探测导出
+  const v1 = validateItems([{ stableId: 'a', anchorText: 't', price: 1, image: 'i' }, { stableId: 'b', anchorText: 't2', price: 2, image: 'i2' }]);
+  assert.ok(v1.pass && v1.total === 2 && v1.uniqueIds === 2);
+  const v2 = validateItems([{ stableId: 'a', anchorText: 't', price: 1, image: 'i' }, { stableId: 'a', anchorText: 't2', price: null, image: 'i2' }]);
+  assert.ok(!v2.pass && v2.uniqueIds === 1 && v2.missing.price === 1, '重复 ID + 缺价必须判废');
+  assert.ok(!validateItems([]).pass, '空结果不通过');
+  const c1 = clampTarget(200, 300, 800);
+  assert.strictEqual(c1.target, 300); assert.ok(!c1.clamped);
+  const c2 = clampTarget(750, 300, 800);
+  assert.strictEqual(c2.target, 50); assert.ok(c2.clamped, '剩余不足必须裁剪不超限');
+  const c3 = clampTarget(800, 300, 800);
+  assert.strictEqual(c3.target, 0);
+  ok('collect validateItems/clampTarget（验收与限额裁剪）');
+}
+
 console.log(`✅ act 层纯逻辑 ${n} 组断言全部通过`);

@@ -32,7 +32,7 @@
 
 **恢复序列**：冷却到期 → `guard --unblock` → `guard --warmup`（首页种 cookie → 停留 → 轻浏览）→ 轻量试水 ≤40 条 → 正常采集。
 
-## 采集参数（配方可跑：`%APPDATA%\scrader_mcp\recipes\temu\accumulate_human.js`）
+## 采集参数（首选：`collect.js` 一条命令，内部自动走协议；配方本体在仓库 `recipes/temu/accumulate_human.js`，用户目录同名文件仅做本机增量）
 
 ```
 harvest/accumulate 字段（MSYS 下正则避免反斜杠；双语——UI 语言随入口变，一次给全）:
